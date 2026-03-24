@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Logs do Sistema - SGI{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div>
+    <h4 class="m-0 fw-bold">Logs do Sistema</h4>
+    <div class="text-secondary small">
+      Auditoria das ações no sistema (login, cadastros, edições, exclusões, etc.).
+    </div>
+  </div>
+  <a href="/dashboard" class="btn btn-outline-light btn-sm">Voltar</a>
+</div>
+
+<div class="card bg-black text-light border border-secondary shadow-sm mb-3">
+  <div class="card-header border-secondary">
+    <form method="GET" action="/logs" class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label text-secondary small mb-1">Usuário</label>
+        <input type="text" name="usuario"
+               value="{{ usuario or '' }}"
+               class="form-control bg-dark text-light border-secondary"
+               placeholder="ex: admin, operador...">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label text-secondary small mb-1">Entidade</label>
+        <input type="text" name="entidade"
+               value="{{ entidade or '' }}"
+               class="form-control bg-dark text-light border-secondary"
+               placeholder="ex: CLIENTE, PRODUTO, IMPRESSORA...">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label text-secondary small mb-1">Ação</label>
+        <input type="text" name="acao"
+               value="{{ acao or '' }}"
+               class="form-control bg-dark text-light border-secondary"
+               placeholder="ex: CRIAR, EDITAR, EXCLUIR...">
+      </div>
+
+      <div class="col-12 d-flex gap-2 mt-2">
+        <button class="btn btn-outline-light btn-sm" type="submit">Filtrar</button>
+        <a class="btn btn-outline-secondary btn-sm" href="/logs">Limpar</a>
+
+        <div class="ms-auto text-secondary small d-flex align-items-center">
+          Registros: <span class="text-light fw-semibold ms-1">{{ total_reg }}</span>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle m-0">
+        <thead class="table-dark">
+          <tr>
+            <th style="width: 110px;">Data/Hora</th>
+            <th style="width: 140px;">Usuário</th>
+            <th style="width: 160px;">Ação</th>
+            <th style="width: 160px;">Entidade</th>
+            <th style="width: 100px;">ID</th>
+            <th>Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in logs %}
+          <tr>
+            <td class="small">
+              {{ l.criado_em.strftime("%d/%m/%Y %H:%M") if l.criado_em else "" }}
+            </td>
+            <td class="small">{{ l.usuario or "" }}</td>
+
+            <td class="small">
+              {% set ac = (l.acao or "").upper() %}
+              <span class="badge
+                {% if ac in ["LOGIN","LOGOUT"] %} bg-primary
+                {% elif ac in ["CRIAR"] %} bg-success
+                {% elif ac in ["EDITAR","ALTERAR_SENHA","ALTERAR_MINHA_SENHA","EDITAR_LOCACAO"] %} bg-warning text-dark
+                {% elif ac in ["EXCLUIR"] %} bg-danger
+                {% else %} bg-secondary
+                {% endif %}
+              ">{{ l.acao }}</span>
+            </td>
+
+            <td class="small">{{ l.entidade or "" }}</td>
+            <td class="small">{{ l.entidade_id if l.entidade_id is not none else "" }}</td>
+
+            <td class="small text-break" style="white-space: pre-line;">
+              {{ l.detalhes or "" }}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-secondary py-4">
+              Nenhum log encontrado para os filtros informados.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-footer border-secondary d-flex align-items-center justify-content-between">
+    <div class="text-secondary small">
+      Página <span class="text-light fw-semibold">{{ page }}</span>
+      de <span class="text-light fw-semibold">{{ total_pages }}</span>
+      | Por página: <span class="text-light fw-semibold">{{ per_page }}</span>
+    </div>
+
+    <div class="d-flex gap-2">
+      {% set qs_base = "usuario=" ~ (usuario or "") ~ "&entidade=" ~ (entidade or "") ~ "&acao=" ~ (acao or "") ~ "&per_page=" ~ per_page %}
+      <a class="btn btn-outline-secondary btn-sm {% if page = 1 %}disabled{% endif %}"
+         href="/logs?{{ qs_base }}&page={{ page-1 }}">Anterior</a>
+
+      <a class="btn btn-outline-secondary btn-sm {% if page >= total_pages %}disabled{% endif %}"
+         href="/logs?{{ qs_base }}&page={{ page+1 }}">Próxima</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+

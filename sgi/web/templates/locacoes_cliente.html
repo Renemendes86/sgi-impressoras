@@ -1,0 +1,705 @@
+
+{% extends "base.html" %}
+{% block title %}SGI - Locações do Cliente{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="m-0 fw-bold">{{ cliente.nome }}</h3>
+    <div class="text-secondary">
+      {{ cliente.tipo_pessoa }} | {{ cliente.cnpj_cpf }}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-light" href="/locacoes">Voltar</a>
+  </div>
+</div>
+
+<!-- Filtro mês -->
+<form method="GET" class="row g-2 align-items-end mb-3">
+  <div class="col-auto">
+    <label class="form-label text-secondary">Mês (custos)</label>
+    <input type="month" class="form-control" name="mes" value="{{ mes }}">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-info">Filtrar</button>
+  </div>
+</form>
+
+<!-- Cards totais -->
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-secondary">Total aluguel</div>
+        <div class="fs-3 fw-bold text-white">
+          {% if pode_ver_valor_aluguel and total_aluguel is not none %}
+            {{ total_aluguel | brl }}
+          {% else %}
+            --
+          {% endif %}
+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-secondary">Custo do mês</div>
+        <div class="fs-3 fw-bold text-white">
+          {% if pode_ver_valor_custo and custo_total is not none %}
+            {{ custo_total | brl }}
+          {% else %}
+            --
+          {% endif %}
+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-secondary">Lucro do mês</div>
+        <div class="fs-3 fw-bold text-white">
+            {% if pode_ver_financeiro and lucro_total is not none %}
+              {{ lucro_total | brl }}
+            {% else %}
+              --
+            {% endif %}
+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-secondary">Margem</div>
+        <div class="fs-3 fw-bold text-white">
+          {% if pode_ver_financeiro and margem_total is not none %}
+            {{ '%.2f'|format(margem_total) }}%
+          {% else %}
+            --
+          {% endif %}
+</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Ações da locação -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="fw-bold">Impressoras locadas</div>
+
+  {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+    {% set tem_disponivel = (impressoras_disponiveis|length) > 0 %}
+    <button
+      class="btn btn-outline-success"
+      data-bs-toggle="modal"
+      data-bs-target="#modalAddImpressora"
+      {% if not tem_disponivel %}disabled{% endif %}
+      title="{% if not tem_disponivel %}Não há impressoras disponíveis no estoque{% endif %}"
+    >
+      + Adicionar nova impressora
+    </button>
+  {% endif %}
+</div>
+
+{% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] and (impressoras_disponiveis|length) == 0 %}
+  <div class="alert alert-warning border border-secondary bg-dark">
+    Não há impressoras disponíveis no estoque para locar neste momento.
+  </div>
+{% endif %}
+
+<!-- Tabela de impressoras -->
+<div class="card bg-black border-secondary mb-3">
+  <div class="card-body p-2">
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle m-0">
+        <thead style="position: sticky; top: 0; z-index: 10;">
+          <tr>
+            <th>Equipamento</th>
+            <th>Modelo</th>
+            <th>Marca</th>
+            <th>Série</th>
+            <th>Patrimônio</th>
+            <th>Local</th>
+            <th class="text-end">Aluguel</th>
+            <th class="text-end">Custo mês</th>
+            <th class="text-end">Lucro mês</th>
+            <th class="text-end">Margem</th>
+            {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+              <th class="text-end">Ações</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+        {% for i in impressoras %}
+          <tr>
+            <td class="fw-semibold">{{ i.nome_equipamento }}</td>
+            <td>{{ i.modelo }}</td>
+            <td>{{ i.marca }}</td>
+            <td>{{ i.num_serie }}</td>
+            <td>{{ i.patrimonio }}</td>
+            <td class="text-secondary">{{ i.local_na_empresa }}</td>
+
+            <td class="text-end">
+              {% if pode_ver_valor_aluguel %}
+                R$ {{ '%.2f'|format(i.valor_aluguel) }}
+              {% else %}
+                --
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if pode_ver_valor_custo %}
+                R$ {{ '%.2f'|format(i.custo_mes) }}
+              {% else %}
+                --
+              {% endif %}
+            </td>>
+            <td class="text-end">
+              {% if pode_ver_financeiro %}
+                R$ {{ '%.2f'|format(i.lucro_mes) }}
+              {% else %}
+                --
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if pode_ver_financeiro %}
+                {{ '%.2f'|format(i.margem_mes) }}%
+              {% else %}
+                --
+              {% endif %}
+            </td>
+
+            {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+            <td class="text-end">
+              <button
+                class="btn btn-sm btn-outline-info btnEditLocada"
+                data-bs-toggle="modal"
+                data-bs-target="#modalEditImpressoraLocada"
+                data-id="{{ i.id }}"
+                data-local="{{ i.local_na_empresa }}"
+                data-aluguel="{{ i.valor_aluguel }}"
+              >
+                Editar
+              </button>
+
+              <form
+                method="POST"
+                action="/locacoes/{{ cliente.id }}/impressora/{{ i.id }}/remover"
+                class="d-inline form-remover-locacao"
+              >
+                <input type="hidden" name="mes" value="{{ mes }}">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remover-locacao">
+                  Excluir da locação
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if impressoras|length == 0 %}
+      <div class="p-3 text-secondary">Este cliente não possui impressoras locadas.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Botão lançar custo -->
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalCusto">
+    + Lançar custo
+  </button>
+</div>
+
+<!-- ===========================
+ MODAL: ADICIONAR IMPRESSORA
+=========================== -->
+<div class="modal fade" id="modalAddImpressora" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Adicionar impressora à locação</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <form method="POST" action="/locacoes/{{ cliente.id }}/impressora/adicionar" id="formAddImpressora">
+        <div class="modal-body">
+          <input type="hidden" name="mes" value="{{ mes }}">
+
+          {% if (impressoras_disponiveis|length) == 0 %}
+            <div class="alert alert-warning border border-secondary bg-dark mb-0">
+              Não há impressoras disponíveis no estoque para locar agora.
+            </div>
+          {% else %}
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label class="form-label text-secondary">Impressora disponível</label>
+                <select class="form-select" name="impressora_id" required>
+                  <option value="">Selecione...</option>
+                  {% for d in impressoras_disponiveis %}
+                    <option value="{{ d.id }}">
+                      {{ d.modelo }} | Patr: {{ d.patrimonio }} | Série: {{ d.num_serie }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <small class="text-secondary">
+                  Só aparecem impressoras <b>não locadas</b>.
+                </small>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-secondary">Local na empresa</label>
+                <input class="form-control" name="local_na_empresa" placeholder="Ex.: Financeiro, TI, Recepção...">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-secondary">Valor do aluguel (R$)</label>
+                <input
+                  class="form-control"
+                  data-money="1"
+                  data-hidden="valor_aluguel"
+                  value="0"
+                  inputmode="numeric"
+                  required
+                >
+                <input type="hidden" name="valor_aluguel" value="0.00">
+              </div>
+            </div>
+          {% endif %}
+
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success" {% if (impressoras_disponiveis|length) == 0 %}disabled{% endif %}>
+            Adicionar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===========================
+ MODAL: EDITAR IMPRESSORA LOCADA
+=========================== -->
+<div class="modal fade" id="modalEditImpressoraLocada" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Editar impressora locada</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <form method="POST" id="formEditLocada">
+        <div class="modal-body">
+          <input type="hidden" name="mes" value="{{ mes }}">
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label text-secondary">Local na empresa</label>
+              <input class="form-control" name="local_na_empresa" id="editLocadaLocal">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label text-secondary">Valor do aluguel (R$)</label>
+              <input
+                class="form-control"
+                id="editLocadaAluguelView"
+                data-money="1"
+                data-hidden="editLocadaAluguel"
+                value="0"
+                inputmode="numeric"
+                required
+              >
+              <input type="hidden" name="valor_aluguel" id="editLocadaAluguel" value="0.00">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-info">Salvar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===========================
+ MODAL: LANÇAR CUSTO (seu original)
+=========================== -->
+<div class="modal fade" id="modalCusto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Lançar custo (produto/serviço)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <form method="POST" action="/locacoes/{{ cliente.id }}/custos/novo">
+        <div class="modal-body">
+
+          <input type="hidden" name="mes" value="{{ mes }}">
+
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label text-secondary">Impressora</label>
+              <select class="form-select" name="impressora_id" required>
+                <option value="">Selecione...</option>
+                {% for i in impressoras %}
+                  <option value="{{ i.id }}">
+                    {{ i.modelo }} | Patrimônio: {{ i.patrimonio }} | Série: {{ i.num_serie }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label text-secondary">Tipo</label>
+              <select class="form-select" name="tipo" id="tipoCusto" required>
+                <option value="PRODUTO">Produto</option>
+                <option value="SERVICO">Serviço</option>
+              </select>
+            </div>
+
+            <div class="col-md-6" id="wrapProduto">
+              <label class="form-label text-secondary">Produto</label>
+              <select class="form-select" name="produto_id" id="produtoSelect">
+                <option value="">Selecione...</option>
+                {% for p in produtos %}
+                  <option value="{{ p.id }}" data-valor="{{ p.valor_custo }}">
+                    {{ p.nome }} ({{ p.marca }} {{ p.modelo }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6 d-none" id="wrapServico">
+              <label class="form-label text-secondary">Serviço</label>
+              <select class="form-select" name="servico_id" id="servicoSelect">
+                <option value="">Selecione...</option>
+                {% for s in servicos %}
+                  <option value="{{ s.id }}" data-valor="{{ s.valor_custo }}">{{ s.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label text-secondary">Descrição (opcional)</label>
+              <input class="form-control" name="descricao" placeholder="Ex.: troca de toner, visita técnica...">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label text-secondary">Quantidade</label>
+              <input class="form-control" name="quantidade" value="1" required>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label text-secondary">Valor unitário (R$)</label>
+              <input
+                class="form-control"
+                id="valorUnitarioView"
+                data-money="1"
+                data-hidden="valor_unitario"
+                value="0"
+                inputmode="numeric"
+                required
+              >
+              <input type="hidden" name="valor_unitario" value="0.00">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label text-secondary">Data</label>
+              <input type="text"class="form-control calendario"name="data_custo"value="{{ hoje }}">
+
+            </div>
+
+          </div>
+
+          <div class="alert alert-secondary bg-dark border-secondary mt-3 mb-0 small">
+            Dica: Se for <b>Produto</b>, selecione um produto. Se for <b>Serviço</b>, selecione um serviço.
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-info">Salvar custo</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Custos detalhados do mês -->
+<div class="card bg-black border-secondary">
+  <div class="card-body p-2">
+    <div class="d-flex justify-content-between align-items-center px-2 pt-2">
+      <div class="fw-bold">Custos do mês (detalhado)</div>
+      <div class="text-secondary small">Mês: {{ mes }}</div>
+    </div>
+
+    <div class="table-responsive mt-2">
+      <table class="table table-dark table-striped table-hover align-middle m-0">
+        <thead style="position: sticky; top: 0; z-index: 10;">
+          <tr>
+            <th>Data</th>
+            <th>Impressora</th>
+            <th>Tipo</th>
+            <th>Item</th>
+            <th class="text-end">Qtd</th>
+            <th class="text-end">Valor Unit.</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in custos_detalhe %}
+          <tr>
+            <td>{{ c.data_custo }}</td>
+            <td class="text-secondary">{{ c.imp_modelo }} | Patr: {{ c.imp_patrimonio }}</td>
+            <td class="text-secondary">{{ c.tipo }}</td>
+            <td class="fw-semibold">{{ c.item }}</td>
+            <td class="text-end">{{ '%.2f'|format(c.quantidade) }}</td>
+            <td class="text-end">
+              {% if pode_ver_valor_custo %}
+                R$ {{ '%.2f'|format(c.valor_unitario) }}
+              {% else %}
+                --
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if pode_ver_valor_custo %}
+                R$ {{ '%.2f'|format(c.total_item) }}
+              {% else %}
+                --
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              <form method="post"
+      action="/locacoes/{{ cliente.id }}/custo/{{ c.id }}/excluir"
+      data-confirm="Deseja realmente excluir este custo? Esta ação não poderá ser desfeita.">
+  <input type="hidden" name="mes" value="{{ mes }}">
+  <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+</form>
+
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if custos_detalhe|length == 0 %}
+      <div class="p-3 text-secondary">Nenhum custo lançado para este cliente no mês selecionado.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO REMOVER DA LOCAÇÃO -->
+<div class="modal fade" id="modalConfirmRemoverLocacao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Confirmação</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        Remover esta impressora da locação? Ela voltará ao estoque e ficará disponível novamente.
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarRemoverLocacao">Sim</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tipo custo (produto/serviço)
+  function atualizarTipoCusto(){
+    const tipo = document.getElementById("tipoCusto").value;
+    const wrapProduto = document.getElementById("wrapProduto");
+    const wrapServico = document.getElementById("wrapServico");
+    const produtoSelect = document.getElementById("produtoSelect");
+    const servicoSelect = document.getElementById("servicoSelect");
+
+    if(tipo === "PRODUTO"){
+      wrapProduto.classList.remove("d-none");
+      wrapServico.classList.add("d-none");
+      produtoSelect.required = true;
+      servicoSelect.required = false;
+      servicoSelect.value = "";
+    } else {
+      wrapServico.classList.remove("d-none");
+      wrapProduto.classList.add("d-none");
+      servicoSelect.required = true;
+      produtoSelect.required = false;
+      produtoSelect.value = "";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const tipo = document.getElementById("tipoCusto");
+    if(tipo) tipo.addEventListener("change", atualizarTipoCusto);
+    atualizarTipoCusto();
+
+    // Editar impressora locada
+    document.querySelectorAll(".btnEditLocada").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        const local = btn.dataset.local || "";
+        const aluguel = parseFloat(btn.dataset.aluguel || 0).toFixed(2);
+
+        const form = document.getElementById("formEditLocada");
+        form.action = `/locacoes/{{ cliente.id }}/impressora/${id}/editar`;
+
+        document.getElementById("editLocadaLocal").value = local;
+        document.getElementById("editLocadaAluguel").value = aluguel;
+        document.getElementById("editLocadaAluguelView").value = aluguel;
+      });
+    });
+  });
+</script>
+
+<script>
+/**
+ * Máscara BRL (sem biblioteca)
+ * - Exibe: R$ 1.234,56
+ * - Envia hidden: 1234.56
+ */
+function somenteDigitos(str) { return (str || "").replace(/\D/g, ""); }
+
+function formatBRLFromDigits(digits) {
+  digits = somenteDigitos(digits);
+  if (!digits) digits = "0";
+  while (digits.length < 3) digits = "0" + digits;
+
+  const centavos = digits.slice(-2);
+  let inteiros = digits.slice(0, -2);
+
+  inteiros = inteiros.replace(/^0+(?=\d)/, "");
+  inteiros = inteiros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `R$ ${inteiros || "0"},${centavos}`;
+}
+
+function digitsToSQL(digits) {
+  digits = somenteDigitos(digits);
+  if (!digits) return "0.00";
+  while (digits.length < 3) digits = "0" + digits;
+  const centavos = digits.slice(-2);
+  const inteiros = digits.slice(0, -2).replace(/^0+(?=\d)/, "") || "0";
+  return `${inteiros}.${centavos}`;
+}
+
+function applyMoneyMask(visibleInput, hiddenInput) {
+  const initial = (visibleInput.value || "").trim();
+  let digits = somenteDigitos(initial);
+
+  if (!digits && initial.includes(".")) {
+    const sql = initial.replace(/[^\d.]/g, "");
+    const parts = sql.split(".");
+    if (parts.length === 2) digits = (parts[0] + parts[1].padEnd(2, "0")).replace(/\D/g, "");
+  }
+
+  if (!digits) digits = "0";
+  visibleInput.value = formatBRLFromDigits(digits);
+  hiddenInput.value = digitsToSQL(digits);
+
+  visibleInput.addEventListener("input", () => {
+    const d = somenteDigitos(visibleInput.value);
+    visibleInput.value = formatBRLFromDigits(d);
+    hiddenInput.value = digitsToSQL(d);
+  });
+
+  visibleInput.addEventListener("focus", () => {
+    setTimeout(() => {
+      visibleInput.setSelectionRange(visibleInput.value.length, visibleInput.value.length);
+    }, 0);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('input[data-money="1"]').forEach(inp => {
+    const hiddenName = inp.dataset.hidden;
+    const hidden = document.querySelector(`input[type="hidden"][name="${hiddenName}"], #${hiddenName}`);
+    if (!hidden) return;
+    applyMoneyMask(inp, hidden);
+    if (inp.required) hidden.required = true;
+  });
+});
+</script>
+
+<script>
+  // Modal de confirmação (remover da locação)
+  let formParaRemover;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".btn-remover-locacao").forEach(btn => {
+      btn.addEventListener("click", () => {
+        formParaRemover = btn.closest("form");
+        const modal = new bootstrap.Modal(document.getElementById("modalConfirmRemoverLocacao"));
+        modal.show();
+      });
+    });
+
+    const btnConfirm = document.getElementById("btnConfirmarRemoverLocacao");
+    if (btnConfirm) {
+      btnConfirm.addEventListener("click", () => {
+        if (formParaRemover) formParaRemover.submit();
+      });
+    }
+  });
+  </script>
+  <script>
+document.addEventListener("DOMContentLoaded", function() {
+
+    const modalCusto = document.getElementById("modalCusto");
+
+    if (modalCusto) {
+        modalCusto.addEventListener("shown.bs.modal", function () {
+
+            if (typeof flatpickr !== "undefined") {
+
+                flatpickr(".calendario", {
+                    dateFormat: "Y-m-d",
+                    locale: "pt",
+                    allowInput: true
+                });
+
+            } else {
+                console.error("Flatpickr não carregou.");
+            }
+
+        });
+    }
+
+});
+</script>
+
+
+{% endblock %}
+
+
+  
+

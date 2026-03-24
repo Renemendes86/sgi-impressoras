@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Contratos Públicos{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+
+  <div>
+    <h3 class="fw-bold m-0">Contratos Públicos</h3>
+    <div class="text-secondary">
+      Painel executivo de contratos por município
+    </div>
+  </div>
+
+  <a class="btn btn-outline-light" href="/dashboard">
+    Voltar
+  </a>
+
+</div>
+
+<!-- 🔒 AVISO DE PERMISSÃO -->
+{% if not pode_ver_financeiro %}
+<div class="alert alert-warning">
+  🔒 Você não possui permissão para visualizar valores financeiros.
+</div>
+{% endif %}
+
+{% for municipio, dados in municipios.items() %}
+
+<div class="card bg-black border-secondary mb-3">
+
+  <div class="card-body">
+
+    <div class="d-flex justify-content-between align-items-center">
+
+      <div>
+        <h5 class="fw-bold text-warning">
+          <span class="toggle"
+                data-municipio="{{ municipio|replace(' ','_') }}"
+                style="cursor:pointer">
+            ▶ {{ municipio }}
+          </span>
+        </h5>
+      </div>
+
+      <!-- 🔥 RESUMO -->
+      <div class="d-flex justify-content-end flex-wrap gap-2">
+
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Secretarias</div>
+            <div class="valor text-light">
+              {{ dados.total_secretarias }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Impressoras</div>
+            <div class="valor text-light">
+              {{ dados.total_impressoras }}
+            </div>
+          </div>
+        </div>
+
+        {% if pode_ver_financeiro %}
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Total de Aluguel</div>
+            <div class="valor text-info text-nowrap">
+              R$ {{ "%.2f"|format(dados.total_aluguel) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Custo Total</div>
+            <div class="valor text-danger text-nowrap">
+              R$ {{ "%.2f"|format(dados.total_custo) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Lucro Total</div>
+            <div class="valor text-success text-nowrap">
+              R$ {{ "%.2f"|format(dados.lucro) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-dark border-secondary text-center resumo-card">
+          <div class="card-body">
+            <div class="small">Margem</div>
+            <div class="valor text-warning text-nowrap">
+              {{ "%.1f"|format(dados.margem) }}%
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+    <!-- 🔽 TABELA -->
+    <table class="table table-dark table-sm mt-3 secretaria-{{ municipio|replace(' ','_') }}"
+           style="display:none">
+
+      <thead>
+        <tr>
+          <th class="text-light">Secretaria</th>
+          <th class="text-end text-light">Impressoras</th>
+
+          {% if pode_ver_financeiro %}
+          <th class="text-end text-light">Total de Aluguel</th>
+          <th class="text-end text-light">Custo</th>
+          <th class="text-end text-light">Lucro</th>
+          <th class="text-end text-light">Margem</th>
+          {% endif %}
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for r in dados.secretarias %}
+
+        <tr>
+          <td class="text-light fw-semibold">{{ r.secretaria }}</td>
+
+          <td class="text-end">{{ r.impressoras }}</td>
+
+          {% if pode_ver_financeiro %}
+          <td class="text-end">
+            R$ {{ "%.2f"|format(r.total_aluguel) }}
+          </td>
+
+          <td class="text-end">
+            R$ {{ "%.2f"|format(r.custo_mes) }}
+          </td>
+
+          <td class="text-end text-success">
+            R$ {{ "%.2f"|format(r.lucro) }}
+          </td>
+
+          <td class="text-end fw-bold
+          {% if r.margem < 30 %}
+            text-danger
+          {% elif r.margem < 60 %}
+            text-warning
+          {% else %}
+            text-success
+          {% endif %}
+          ">
+            {{ "%.1f"|format(r.margem) }}%
+          </td>
+          {% endif %}
+
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+{% endfor %}
+
+<!-- 🎨 CSS -->
+<style>
+.resumo-card{
+  min-width:160px;
+  height:60px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+}
+
+.resumo-card:hover{
+  border-color:#0d6efd;
+  transition:0.2s;
+}
+
+.resumo-card .small{
+  font-size:11px;
+  color:#aaa;
+}
+
+.resumo-card .valor{
+  font-size:14px;
+  font-weight:bold;
+  white-space:nowrap;
+}
+</style>
+
+<!-- 🔧 SCRIPT -->
+<script>
+document.querySelectorAll(".toggle").forEach(btn => {
+
+  btn.addEventListener("click", function(){
+
+    let municipio = this.dataset.municipio
+    let tabela = document.querySelector(".secretaria-"+municipio)
+
+    if(tabela.style.display === "none"){
+      tabela.style.display = ""
+    }else{
+      tabela.style.display = "none"
+    }
+
+  })
+
+})
+</script>
+
+{% endblock %}

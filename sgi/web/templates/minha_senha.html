@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Minha Senha - SGI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-5">
+    <div class="card bg-black text-light border border-secondary shadow-sm">
+      <div class="card-header border-secondary d-flex align-items-center justify-content-between">
+        <div>
+          <h5 class="m-0 fw-bold">Minha Senha</h5>
+          <div class="text-secondary small">Altere sua senha de acesso com segurança.</div>
+        </div>
+        <a href="/dashboard" class="btn btn-outline-light btn-sm">Voltar</a>
+      </div>
+
+      <div class="card-body">
+        <form method="POST" action="/minha-senha" autocomplete="off">
+          <div class="mb-3">
+            <label class="form-label text-secondary">Senha atual</label>
+            <input type="password" name="senha_atual" class="form-control bg-dark text-light border-secondary"
+                   placeholder="Digite sua senha atual" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary">Nova senha</label>
+            <input type="password" name="nova_senha" class="form-control bg-dark text-light border-secondary"
+                   placeholder="Digite a nova senha" minlength="4" required>
+            <div class="form-text text-secondary">Mínimo recomendado: 6+ caracteres.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-secondary">Confirmar nova senha</label>
+            <input type="password" name="nova_senha2" class="form-control bg-dark text-light border-secondary"
+                   placeholder="Repita a nova senha" minlength="4" required>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-outline-light">
+              Salvar nova senha
+            </button>
+            <a href="/dashboard" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-footer border-secondary small text-secondary">
+        Usuário logado: <span class="text-light fw-semibold">{{ session.get('usuario') }}</span>
+        {% if session.get('perfil') %}
+          | Perfil: <span class="text-light fw-semibold">{{ session.get('perfil') }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

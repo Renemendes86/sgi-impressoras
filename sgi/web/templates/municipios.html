@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Municípios{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+
+<div>
+<h3 class="fw-bold m-0">Municípios</h3>
+<div class="text-secondary">Cadastro de municípios</div>
+</div>
+
+<a class="btn btn-outline-light" href="/dashboard">
+Voltar
+</a>
+
+</div>
+
+<div class="card bg-black border-secondary">
+
+<div class="card-body">
+
+<form method="POST" action="/municipios/novo" class="row g-2 mb-3">
+
+<div class="col-md-6">
+<input type="text"
+       name="nome"
+       class="form-control"
+       placeholder="Nome do município"
+       required>
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-primary">
+Cadastrar
+</button>
+</div>
+
+</form>
+
+<table class="table table-dark table-striped">
+
+<thead>
+<tr>
+<th style="width:80px">ID</th>
+<th>Município</th>
+<th class="text-end" style="width:200px">Ações</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for m in municipios %}
+
+<tr>
+
+<td>{{ m.id }}</td>
+
+<td>{{ m.nome }}</td>
+
+<td class="text-end">
+
+<button class="btn btn-sm btn-outline-info"
+        data-bs-toggle="modal"
+        data-bs-target="#modalEditar"
+        data-id="{{ m.id }}"
+        data-nome="{{ m.nome }}">
+Editar
+</button>
+
+<form method="POST"
+      action="/municipios/{{ m.id }}/excluir"
+      style="display:inline"
+      onsubmit="return confirm('Tem certeza que deseja excluir este município?');">
+
+<button class="btn btn-sm btn-outline-danger">
+Excluir
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+
+<div class="modal fade" id="modalEditar" tabindex="-1">
+
+<div class="modal-dialog modal-dialog-centered">
+
+<div class="modal-content bg-dark text-light">
+
+<form id="formEditar" method="POST">
+
+<div class="modal-header">
+
+<h5 class="modal-title">Editar Município</h5>
+
+<button class="btn-close btn-close-white"
+        data-bs-dismiss="modal">
+</button>
+
+</div>
+
+<div class="modal-body">
+
+<input type="text"
+       name="nome"
+       id="edit_nome"
+       class="form-control"
+       required>
+
+</div>
+
+<div class="modal-footer">
+
+<button class="btn btn-secondary"
+        data-bs-dismiss="modal">
+Cancelar
+</button>
+
+<button class="btn btn-primary">
+Salvar
+</button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+</div>
+
+<script>
+
+const modalEditar = document.getElementById('modalEditar');
+
+modalEditar.addEventListener('show.bs.modal', function(event){
+
+const button = event.relatedTarget;
+
+const id = button.getAttribute('data-id');
+
+const nome = button.getAttribute('data-nome');
+
+document.getElementById('edit_nome').value = nome;
+
+document.getElementById('formEditar').action =
+"/municipios/" + id + "/editar";
+
+});
+
+</script>
+
+{% endblock %}

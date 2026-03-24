@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}SGI - Login{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="card login-card bg-black border border-secondary text-light">
+    <div class="card-body">
+      <div class="text-center mb-3">
+        <h3 class="fw-bold">SGI</h3>
+        <div class="text-secondary">Sistema de Gestão de Impressoras</div>
+      </div>
+
+      {# Se você ainda estiver usando a variável "erro" no backend, mantém compatibilidade #}
+      {% if erro %}
+        <div class="alert alert-danger py-2 border border-secondary">{{ erro }}</div>
+      {% endif %}
+
+      <form method="POST" action="/">
+        <div class="mb-3">
+          <label class="form-label">Usuário</label>
+          <input class="form-control" name="usuario" autocomplete="username" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Senha</label>
+          <input type="password" class="form-control" name="senha" autocomplete="current-password" required>
+        </div>
+
+        <button class="btn btn-primary w-100">Entrar</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,136 @@
+.login-wrap{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.login-card{
+  width: 420px;
+  background:#0b0f14;
+  border:1px solid #1f2a37;
+  border-radius:16px;
+}
+.card-menu{
+  display:block;
+  text-decoration:none;
+  background:#0b0f14;
+  border:1px solid #1f2a37;
+  border-radius:16px;
+  color:#fff;
+  transition: transform .12s ease, border-color .12s ease;
+}
+.card-menu:hover{
+  transform: translateY(-2px);
+  border-color:#3b82f6;
+}
+
+/* ==================================================
+   DATATABLES (LEGADO – caso exista alguma tela antiga)
+================================================== */
+.dataTables_filter label,
+.dataTables_length label,
+.dataTables_info {
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.dataTables_filter input {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #666;
+  font-weight: 600;
+}
+
+.dataTables_length select {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #666;
+  font-weight: 600;
+}
+
+/* ==================================================
+   DATATABLES 2.x (ATUAL – IMPRESSORAS / PRODUTOS)
+================================================== */
+
+/* labels: Pesquisar / Exibir / Mostrando */
+.dt-search label,
+.dt-length label,
+.dt-info {
+  color: #fff !important;
+  font-weight: 700;
+}
+
+/* campo de busca */
+.dt-search input {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #6c757d;
+  font-weight: 700;
+  min-width: 1530px;   /* 🔥 aumenta largura */
+  height: 42px;       /* 🔥 aumenta altura */
+  font-size: 1rem;    /* 🔥 texto maior */
+  padding: 6px 12px;
+}
+
+
+.dt-search input::placeholder {
+  color: #adb5bd;
+}
+
+/* select "Exibir X registros" */
+.dt-length select {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #6c757d;
+  font-weight: 600;
+}
+
+/* paginação */
+.dt-paging button {
+  background-color: #000 !important;
+  color: #fff !important;
+  border: 1px solid #6c757d;
+}
+
+.dt-paging button.current,
+.dt-paging button:hover {
+  background-color: #0d6efd !important;
+  color: #fff !important;
+}
+
+/* ================================
+MENU SaaS
+================================ */
+
+.navbar{
+background:#0f1115;
+border-bottom:1px solid #2a2f3a;
+}
+
+.menu-link{
+display:flex;
+align-items:center;
+gap:6px;
+font-size:14px;
+color:#cfd3dc !important;
+font-weight:500;
+padding:6px 10px !important;
+border-radius:6px;
+transition:all .2s;
+}
+
+.menu-link i{
+font-size:15px;
+}
+
+.menu-link:hover{
+background:#1c1f26;
+color:#ffffff !important;
+}
+
+.nav-link.active{
+background:#2a2f3a;
+color:#fff !important;
+}
+

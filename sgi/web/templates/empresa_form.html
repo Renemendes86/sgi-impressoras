@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h3 class="mb-4">
+        {% if empresa %}
+            Editar Empresa: {{ empresa.nome }}
+        {% else %}
+            Nova Empresa
+        {% endif %}
+    </h3>
+
+    <form method="POST">
+
+        <!-- Nome -->
+        <div class="mb-3">
+            <label class="form-label">Nome da Empresa *</label>
+            <input type="text" name="nome" class="form-control"
+                   required
+                   value="{{ empresa.nome if empresa else '' }}">
+        </div>
+
+        <!-- CNPJ -->
+        <div class="mb-3">
+            <label class="form-label">CNPJ</label>
+            <input type="text" name="cnpj" class="form-control cnpj-mask"
+                   value="{{ empresa.cnpj if empresa else '' }}">
+        </div>
+
+        <!-- Endereço -->
+        <div class="mb-3">
+            <label class="form-label">Endereço</label>
+            <input type="text" name="endereco" class="form-control"
+                   value="{{ empresa.endereco if empresa else '' }}">
+        </div>
+
+        <!-- Telefone -->
+        <div class="mb-3">
+            <label class="form-label">Telefone</label>
+            <input type="text" name="telefone" class="form-control phone-mask"
+                   value="{{ empresa.telefone if empresa else '' }}">
+        </div>
+
+        <!-- Email -->
+        <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ empresa.email if empresa else '' }}">
+        </div>
+
+        <!-- Status (somente ao editar) -->
+        {% if empresa %}
+            <div class="mb-3">
+                <label class="form-label">Status</label>
+                <select name="ativo" class="form-select">
+                    <option value="1" {% if empresa.ativo %}selected{% endif %}>Ativa</option>
+                    <option value="0" {% if not empresa.ativo %}selected{% endif %}>Inativa</option>
+                </select>
+            </div>
+        {% endif %}
+
+        <div class="mt-4">
+
+            <button type="submit" class="btn btn-primary">
+                {% if empresa %}Salvar Alterações{% else %}Cadastrar Empresa{% endif %}
+            </button>
+
+            <a href="/empresas" class="btn btn-secondary ms-2">
+                Cancelar
+            </a>
+
+        </div>
+
+    </form>
+</div>
+
+<!-- JS de Máscara (CNPJ / Telefone) -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    function mask(input, pattern) {
+        input.addEventListener("input", function () {
+            let i = 0;
+            let v = this.value.replace(/\D/g, "");
+            this.value = pattern.replace(/#/g, _ => v[i++] || "");
+        });
+    }
+
+    document.querySelectorAll(".cnpj-mask").forEach(el => {
+        mask(el, "##.###.###/####-##");
+    });
+
+    document.querySelectorAll(".phone-mask").forEach(el => {
+        mask(el, "(##) #####-####");
+    });
+
+});
+</script>
+
+{% endblock %}

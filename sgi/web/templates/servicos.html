@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}SGI - Serviços{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold m-0">Cadastro de Serviços</h3>
+    <div class="text-secondary">Cadastro e manutenção de serviços (com valor de custo em R$)</div>
+  </div>
+  <a class="btn btn-outline-light" href="/dashboard">Voltar</a>
+</div>
+
+{% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+<div class="card bg-black border-secondary mb-3">
+  <div class="card-body">
+    <form method="POST" action="/servicos/novo" class="row g-2 align-items-end">
+
+      <div class="col-md-6">
+        <label class="form-label text-secondary">Nome do serviço</label>
+        <input class="form-control" name="nome" required>
+      </div>
+
+      <div class="col-md-2 d-flex flex-column">
+  <label class="form-label text-secondary">Valor custo (R$)</label>
+  <input
+    class="form-control"
+    name="valor_custo"
+    data-money="1"
+    value="0"
+    inputmode="numeric"
+    placeholder="Ex: 25,90">
+</div>
+
+
+     <div class="col-12 text-end">
+  <button class="btn btn-success">Salvar</button>
+</div>
+
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card bg-black border-secondary">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th class="text-end">Valor Custo</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in servicos %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td class="fw-semibold">{{ s.nome }}</td>
+            <td class="text-end">R$ {{ '%.2f'|format(s.valor_custo) }}</td>
+            <td class="text-end">
+              {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-info btnEditarServico"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalEditarServico"
+                  data-id="{{ s.id }}"
+                  data-nome="{{ s.nome }}"
+                  data-valor="{{ '%.2f'|format(s.valor_custo) }}"
+                >
+                  Editar
+                </button>
+              {% endif %}
+
+              {% if session['perfil'] in ['ADMIN', 'SUPER_ADMIN'] %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger btnExcluirServico"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalExcluirServico"
+                  data-id="{{ s.id }}"
+                  data-nome="{{ s.nome }}"
+                >
+                  Excluir
+                </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if servicos|length == 0 %}
+      <div class="p-3 text-secondary">Nenhum serviço cadastrado.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- =========================
+ MODAL EDITAR SERVIÇO
+========================= -->
+<div class="modal fade" id="modalEditarServico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Editar Serviço</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" id="formEditarServico">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-7">
+              <label class="form-label text-secondary">Nome do serviço</label>
+              <input class="form-control" name="nome" id="editServNome" required>
+            </div>
+
+            <div class="col-md-5">
+              <label class="form-label text-secondary">Valor custo (R$)</label>
+              <!-- Padrão: máscara BRL -->
+              <input class="form-control"
+                     name="valor_custo"
+                     id="editServValor"
+                     data-money="1"
+                     value="0"
+                     inputmode="numeric"
+                     placeholder="Ex: 2590 = R$ 25,90">
+              <small class="text-secondary">Digite somente números (ex.: 2590 = R$ 25,90)</small>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-info">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+ MODAL EXCLUIR SERVIÇO
+========================= -->
+<div class="modal fade" id="modalExcluirServico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Confirmação</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        Tem certeza que deseja excluir o serviço <b id="nomeExcluirServico"></b>?
+        <div class="text-secondary small mt-2">
+          Obs.: se estiver vinculado a custos/locações, o sistema bloqueará.
+        </div>
+      </div>
+
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Não</button>
+        <form method="POST" id="formExcluirServico" class="d-inline">
+          <button class="btn btn-danger">Sim, excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Editar serviço
+  document.querySelectorAll(".btnEditarServico").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      document.getElementById("formEditarServico").action = `/servicos/${id}/editar`;
+
+      document.getElementById("editServNome").value = btn.dataset.nome || "";
+
+      // pode vir "25.90" (SQL) — a máscara global formata no input
+      document.getElementById("editServValor").value = btn.dataset.valor || "0";
+    });
+  });
+
+  // Excluir serviço
+  document.querySelectorAll(".btnExcluirServico").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      document.getElementById("formExcluirServico").action = `/servicos/${id}/excluir`;
+      document.getElementById("nomeExcluirServico").textContent = btn.dataset.nome || "";
+    });
+  });
+</script>
+{% endblock %}

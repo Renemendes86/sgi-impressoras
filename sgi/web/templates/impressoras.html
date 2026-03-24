@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+{% block title %}SGI - Impressoras{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold m-0">Cadastro de Impressoras</h3>
+    <div class="text-secondary">Perfil: {{ session['perfil'] }}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-light" href="/dashboard">Voltar</a>
+    {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovo">+ Nova Impressora</button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Indicadores -->
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-light fw-bold">Total cadastradas</div>
+        <div class="fs-3 fw-bold text-light">{{ total }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-light fw-bold">Locadas</div>
+        <div class="fs-3 fw-bold text-light">{{ locadas }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-light fw-bold">Disponíveis</div>
+        <div class="fs-3 fw-bold text-light">{{ disponiveis }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-secondary">
+      <div class="card-body">
+        <div class="text-light fw-bold">Valor Total Alugadas</div>
+        <div class="fs-3 fw-bold text-light">
+  R$ {{ "{:,.2f}".format(total_aluguel_locadas).replace(",", "X").replace(".", ",").replace("X", ".") }}
+</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Tabela -->
+<div class="card bg-black border-secondary">
+  <div class="card-body p-2">
+    <table id="tabelaImpressoras" class="table table-dark table-striped table-hover align-middle m-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Equipamento</th>
+          <th>Modelo</th>
+          <th>Marca</th>
+          <th>Nº Série</th>
+          <th>Patrimônio</th>
+          <th>Locada?</th>
+          <th>Cliente</th>
+          <th>Local</th>
+          <th>Compra (R$)</th>
+          <th>Aluguel (R$)</th>
+          <th style="width: 220px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in impressoras %}
+        <tr>
+          <td>{{ i.id }}</td>
+          <td>{{ i.nome_equipamento }}</td>
+          <td>{{ i.modelo }}</td>
+          <td>{{ i.marca }}</td>
+          <td>{{ i.num_serie }}</td>
+          <td>{{ i.patrimonio }}</td>
+          <td>
+            {% if i.locada %}
+              <span class="badge text-bg-success">SIM</span>
+            {% else %}
+              <span class="badge text-bg-secondary">NÃO</span>
+            {% endif %}
+          </td>
+          <td>{{ i.cliente_nome }}</td>
+          <td>{{ i.local_na_empresa }}</td>
+          <td>R$ {{ '%.2f'|format(i.valor_compra) }}</td>
+          <td>R$ {{ '%.2f'|format(i.valor_aluguel) }}</td>
+          <td>
+            {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+            <button class="btn btn-sm btn-outline-info"
+                    data-bs-toggle="modal" data-bs-target="#modalEditar"
+                    data-id="{{ i.id }}"
+                    data-nome="{{ i.nome_equipamento }}"
+                    data-modelo="{{ i.modelo }}"
+                    data-marca="{{ i.marca }}"
+                    data-serie="{{ i.num_serie }}"
+                    data-patrimonio="{{ i.patrimonio }}"
+                    data-locada="{{ 'SIM' if i.locada else 'NAO' }}"
+                    data-cliente_id="{{ i.cliente_id }}"
+                    data-local="{{ i.local_na_empresa }}"
+                    data-compra="{{ i.valor_compra }}"
+                    data-aluguel="{{ i.valor_aluguel }}">
+              Editar
+            </button>
+            {% endif %}
+
+              {% if session['perfil'] in ['ADMIN', 'SUPER_ADMIN'] %}
+              {% if i.locada %}
+                <button class="btn btn-sm btn-outline-danger" disabled
+                        title="Não é permitido excluir uma impressora que esteja locada.">
+                  Excluir
+                </button>
+              {% else %}
+                <form method="POST" action="/impressoras/{{ i.id }}/excluir" class="d-inline excluir-form">
+                  <button type="button" class="btn btn-sm btn-outline-danger btn-excluir">Excluir</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- DataTables CSS/JS (página específica) -->
+<link href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.1.8/css/dataTables.dataTables.min.css" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
+
+<!-- MODAL NOVO -->
+<div class="modal fade" id="modalNovo" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-black border-secondary text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Nova Impressora</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" action="/impressoras/novo">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-4">
+              <label class="form-label">Nome do equipamento</label>
+              <input class="form-control" name="nome_equipamento" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Modelo</label>
+              <input class="form-control" name="modelo" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Marca</label>
+              <input class="form-control" name="marca" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Nº de série</label>
+              <input class="form-control" name="num_serie" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Nº patrimônio</label>
+              <input class="form-control" name="patrimonio" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor de compra (R$)</label>
+              <input class="form-control" data-money="1" data-hidden="valor_compra" value="0" inputmode="numeric">
+              <input type="hidden" name="valor_compra" value="0.00">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Está locada?</label>
+              <select class="form-select" name="locada" id="novo_locada">
+                <option value="NAO">Não</option>
+                <option value="SIM">Sim</option>
+              </select>
+            </div>
+
+            <div class="col-md-5">
+              <label class="form-label">Cliente (se locada)</label>
+              <select class="form-select" name="cliente_id" id="novo_cliente">
+                <option value="">-- selecione --</option>
+                {% for c in clientes %}
+                  <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Local na empresa (setor/departamento)</label>
+              <input class="form-control" name="local_na_empresa" id="novo_local">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor do aluguel (R$)</label>
+              <input class="form-control" data-money="1" data-hidden="valor_aluguel" value="0" inputmode="numeric">
+              <input type="hidden" name="valor_aluguel" value="0.00">
+            </div>
+
+            <div class="col-12">
+              <small class="text-secondary">
+                Regra: se marcar “locada = sim”, é obrigatório selecionar o cliente.
+              </small>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-outline-light" data-bs-dismiss="modal" type="button">Cancelar</button>
+          <button class="btn btn-success">Salvar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content bg-black border-secondary text-light">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Editar Impressora</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form id="formEditar" method="POST">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-4">
+              <label class="form-label">Nome do equipamento</label>
+              <input class="form-control" name="nome_equipamento" id="edit_nome" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Modelo</label>
+              <input class="form-control" name="modelo" id="edit_modelo" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Marca</label>
+              <input class="form-control" name="marca" id="edit_marca" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Nº de série</label>
+              <input class="form-control" name="num_serie" id="edit_serie" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Nº patrimônio</label>
+              <input class="form-control" name="patrimonio" id="edit_patrimonio" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor de compra (R$)</label>
+              <input class="form-control" id="edit_compra_view" data-money="1" data-hidden="edit_valor_compra" value="0" inputmode="numeric">
+              <input type="hidden" name="valor_compra" id="edit_valor_compra" value="0.00">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Está locada?</label>
+              <select class="form-select" name="locada" id="edit_locada">
+                <option value="NAO">Não</option>
+                <option value="SIM">Sim</option>
+              </select>
+              <input type="hidden" id="edit_locada_original" value="NAO">
+              <input type="hidden" id="edit_cliente_original" value="">
+            </div>
+
+            <div class="col-md-5">
+              <label class="form-label">Cliente (se locada)</label>
+              <select class="form-select" name="cliente_id" id="edit_cliente">
+                <option value="">-- selecione --</option>
+                {% for c in clientes %}
+                  <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+
+              <small class="text-warning d-none" id="msgTrocaCliente">
+                Esta impressora já está locada. Para trocar de cliente: marque <b>locada = não</b>, salve, e depois locar novamente.
+              </small>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Local na empresa</label>
+              <input class="form-control" name="local_na_empresa" id="edit_local">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Valor do aluguel (R$)</label>
+              <input class="form-control" id="edit_aluguel_view" data-money="1" data-hidden="edit_valor_aluguel" value="0" inputmode="numeric">
+              <input type="hidden" name="valor_aluguel" id="edit_valor_aluguel" value="0.00">
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-outline-light" data-bs-dismiss="modal" type="button">Cancelar</button>
+          <button class="btn btn-success">Atualizar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO DE EXCLUSÃO -->
+<div class="modal fade" id="modalConfirmExcluir" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Confirmação</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir esta impressora?
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Não</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarExcluir">Sim</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // DataTables
+ new DataTable('#tabelaImpressoras', {
+  pageLength: 25,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, "desc"]],
+  language: {
+    url: "https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json",
+    search: "Pesquisar:",
+    lengthMenu: "Exibir _MENU_ registros",
+    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+    infoEmpty: "Nenhum registro encontrado",
+    zeroRecords: "Nenhum registro encontrado"
+  }
+});
+
+// CONTROLE LOCADA / CLIENTE
+function toggleLocada(selectLocada, selectCliente, inputLocal) {
+  const isLocada = selectLocada.value === "SIM";
+
+  selectCliente.disabled = !isLocada;
+  inputLocal.disabled   = !isLocada;
+
+  if (!isLocada) {
+    selectCliente.value = "";
+    inputLocal.value   = "";
+  }
+}
+
+
+  // NOVO
+  const novoLocada = document.getElementById("novo_locada");
+  const novoCliente = document.getElementById("novo_cliente");
+  const novoLocal = document.getElementById("novo_local");
+  if (novoLocada) {
+    novoLocada.addEventListener("change", () => toggleLocada(novoLocada, novoCliente, novoLocal));
+    toggleLocada(novoLocada, novoCliente, novoLocal);
+  }
+
+  // EDITAR - preencher campos
+  const modalEditar = document.getElementById("modalEditar");
+  modalEditar.addEventListener("show.bs.modal", function(event) {
+    const btn = event.relatedTarget;
+
+    const id = btn.getAttribute("data-id");
+    document.getElementById("formEditar").action = `/impressoras/${id}/editar`;
+
+    document.getElementById("edit_nome").value = btn.getAttribute("data-nome") || "";
+    document.getElementById("edit_modelo").value = btn.getAttribute("data-modelo") || "";
+    document.getElementById("edit_marca").value = btn.getAttribute("data-marca") || "";
+    document.getElementById("edit_serie").value = btn.getAttribute("data-serie") || "";
+    document.getElementById("edit_patrimonio").value = btn.getAttribute("data-patrimonio") || "";
+
+    document.getElementById("edit_compra_view").value = btn.getAttribute("data-compra") || "0";
+    document.getElementById("edit_aluguel_view").value = btn.getAttribute("data-aluguel") || "0";
+
+    const locada = btn.getAttribute("data-locada");
+    const cliente_id = btn.getAttribute("data-cliente_id");
+    const local = btn.getAttribute("data-local");
+
+    const editLocada = document.getElementById("edit_locada");
+    const editCliente = document.getElementById("edit_cliente");
+    const editLocal = document.getElementById("edit_local");
+
+    editLocada.value = (locada === "SIM") ? "SIM" : "NAO";
+    editCliente.value = (cliente_id && cliente_id !== "0") ? cliente_id : "";
+    editLocal.value = local || "";
+
+    document.getElementById("edit_locada_original").value = editLocada.value;
+    document.getElementById("edit_cliente_original").value = editCliente.value;
+
+    document.getElementById("msgTrocaCliente").classList.add("d-none");
+    toggleLocada(editLocada, editCliente, editLocal);
+  });
+
+  const editLocada = document.getElementById("edit_locada");
+  const editCliente = document.getElementById("edit_cliente");
+  const editLocal = document.getElementById("edit_local");
+
+  function validarTrocaCliente() {
+    const locadaOriginal = document.getElementById("edit_locada_original").value;
+    const clienteOriginal = document.getElementById("edit_cliente_original").value;
+
+    if (locadaOriginal === "SIM" && editLocada.value === "SIM") {
+      if ((editCliente.value || "") !== (clienteOriginal || "")) {
+        editCliente.value = clienteOriginal;
+        document.getElementById("msgTrocaCliente").classList.remove("d-none");
+      }
+    } else {
+      document.getElementById("msgTrocaCliente").classList.add("d-none");
+    }
+  }
+
+  if (editLocada) {
+    editLocada.addEventListener("change", () => {
+      toggleLocada(editLocada, editCliente, editLocal);
+      validarTrocaCliente();
+    });
+  }
+  if (editCliente) editCliente.addEventListener("change", validarTrocaCliente);
+
+  // Modal excluir
+  let formParaExcluir = null;
+  document.querySelectorAll('.btn-excluir').forEach(btn => {
+    btn.addEventListener('click', function() {
+      formParaExcluir = btn.closest('form');
+      const modal = new bootstrap.Modal(document.getElementById('modalConfirmExcluir'));
+      modal.show();
+    });
+  });
+
+  document.getElementById('btnConfirmarExcluir').addEventListener('click', function() {
+    if (formParaExcluir) formParaExcluir.submit();
+  });
+
+});
+</script>
+
+<script>
+/**
+ * Máscara de moeda BR (sem biblioteca)
+ * - Exibe: R$ 1.234,56
+ * - Envia para o backend: 1234.56
+ */
+function somenteDigitos(str) { return (str || "").replace(/\D/g, ""); }
+
+function formatBRLFromDigits(digits) {
+  digits = somenteDigitos(digits);
+  if (!digits) digits = "0";
+  while (digits.length < 3) digits = "0" + digits;
+
+  const centavos = digits.slice(-2);
+  let inteiros = digits.slice(0, -2);
+
+  inteiros = inteiros.replace(/^0+(?=\d)/, "");
+  inteiros = inteiros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `R$ ${inteiros || "0"},${centavos}`;
+}
+
+function digitsToSQL(digits) {
+  digits = somenteDigitos(digits);
+  if (!digits) return "0.00";
+  while (digits.length < 3) digits = "0" + digits;
+  const centavos = digits.slice(-2);
+  const inteiros = digits.slice(0, -2).replace(/^0+(?=\d)/, "") || "0";
+  return `${inteiros}.${centavos}`;
+}
+
+function applyMoneyMask(visibleInput, hiddenInput) {
+  const initial = (visibleInput.value || "").trim();
+  let digits = somenteDigitos(initial);
+
+  if (!digits && initial.includes(".")) {
+    const sql = initial.replace(/[^\d.]/g, "");
+    const parts = sql.split(".");
+    if (parts.length === 2) digits = (parts[0] + parts[1].padEnd(2, "0")).replace(/\D/g, "");
+  }
+
+  if (!digits) digits = "0";
+  visibleInput.value = formatBRLFromDigits(digits);
+  hiddenInput.value = digitsToSQL(digits);
+
+  visibleInput.addEventListener("input", () => {
+    const d = somenteDigitos(visibleInput.value);
+    visibleInput.value = formatBRLFromDigits(d);
+    hiddenInput.value = digitsToSQL(d);
+  });
+
+  visibleInput.addEventListener("focus", () => {
+    setTimeout(() => {
+      visibleInput.setSelectionRange(visibleInput.value.length, visibleInput.value.length);
+    }, 0);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('input[data-money="1"]').forEach(inp => {
+    const hiddenName = inp.dataset.hidden;
+    let hidden = document.querySelector(`input[type="hidden"][name="${hiddenName}"]`);
+    if (!hidden) hidden = document.getElementById(hiddenName);
+    if (!hidden) return;
+
+    applyMoneyMask(inp, hidden);
+    if (inp.required) hidden.required = true;
+  });
+});
+</script>
+
+{% endblock %}

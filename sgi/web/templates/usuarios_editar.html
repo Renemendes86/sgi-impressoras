@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Editar Usuário{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <div class="card bg-black border-secondary">
+    <div class="card-body">
+
+      <h4 class="mb-4 fw-bold text-white">Editar Usuário</h4>
+
+      <form method="POST">
+
+        <!-- USUÁRIO -->
+        <div class="mb-3">
+          <label class="form-label">Usuário</label>
+          <input type="text" name="usuario"
+                 value="{{ usuario.usuario }}"
+                 class="form-control" required>
+        </div>
+
+        <!-- PERFIL -->
+        <div class="mb-3">
+          <label class="form-label">Perfil</label>
+          <select name="perfil" class="form-select">
+
+            {% if session.get('perfil') == 'SUPER_ADMIN' %}
+              <option value="SUPER_ADMIN"
+                {% if usuario.perfil == 'SUPER_ADMIN' %}selected{% endif %}>
+                SUPER_ADMIN
+              </option>
+            {% endif %}
+
+            {% if session.get('perfil') in ['SUPER_ADMIN', 'ADMIN'] %}
+              <option value="ADMIN"
+                {% if usuario.perfil == 'ADMIN' %}selected{% endif %}>
+                ADMIN
+              </option>
+
+              <option value="OPERADOR"
+                {% if usuario.perfil == 'OPERADOR' %}selected{% endif %}>
+                OPERADOR
+              </option>
+            {% endif %}
+
+          </select>
+        </div>
+
+        <!-- EMPRESA -->
+        <div class="mb-3">
+          <label class="form-label">Empresa</label>
+          <select name="empresa_id" class="form-select">
+            {% for e in empresas %}
+              <option value="{{ e.id }}"
+                {% if e.id == usuario.empresa_id %}selected{% endif %}>
+                {{ e.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- MULTIEMPRESA -->
+        <div class="form-check mb-3">
+          <input class="form-check-input"
+                 type="checkbox"
+                 name="pode_multiempresa"
+                 {% if usuario.pode_multiempresa %}checked{% endif %}>
+          <label class="form-check-label">
+            Pode acessar múltiplas empresas
+          </label>
+        </div>
+
+        <!-- BOTÕES -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary fw-bold">
+            Salvar Alterações
+          </button>
+          <a href="/usuarios" class="btn btn-outline-light">
+            Cancelar
+          </a>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

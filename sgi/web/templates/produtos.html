@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}SGI - Produtos{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold m-0">Cadastro de Produtos</h3>
+    <div class="text-secondary">Controle de estoque (entrada / saída / ajuste) com histórico completo</div>
+  </div>
+  <a class="btn btn-outline-light" href="/dashboard">Voltar</a>
+</div>
+
+{% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+<div class="card bg-black border-secondary mb-3">
+  <div class="card-body">
+    <form method="POST" action="/produtos/novo" class="row g-2 align-items-end">
+
+      <div class="col-md-3">
+        <label class="form-label text-secondary">Nome</label>
+        <input class="form-control" name="nome" required>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label text-secondary">Marca</label>
+        <input class="form-control" name="marca">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label text-secondary">Modelo</label>
+        <input class="form-control" name="modelo">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label text-secondary">Unidade</label>
+        <select class="form-select" name="unidade">
+          <option value="UN">UN</option>
+          <option value="KG">KG</option>
+          <option value="L">L</option>
+          <option value="CX">CX</option>
+          <option value="PC">PC</option>
+        </select>
+      </div>
+
+      <div class="col-md-1">
+        <label class="form-label text-secondary">Estoque inicial</label>
+        <input class="form-control" name="estoque_inicial" value="0">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label text-secondary">Valor custo (R$)</label>
+        <input class="form-control"
+               name="valor_custo"
+               data-money="1"
+               inputmode="numeric"
+               value="0"
+               placeholder="Ex: 25,90">
+      </div>
+
+      <div class="col-12 text-end">
+        <button class="btn btn-success">Salvar</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card bg-black border-secondary">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Un</th>
+            <th class="text-end">Estoque</th>
+            <th class="text-end">Valor Custo</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+  {% for p in produtos %}
+  <tr>
+    <td>{{ p["id"] }}</td>
+    <td class="fw-semibold">{{ p["nome"] }}</td>
+    <td>{{ p["marca"] }}</td>
+    <td>{{ p["modelo"] }}</td>
+    <td class="text-secondary">{{ p["unidade"] }}</td>
+
+    <td class="text-end">
+      {{ '%.2f'|format(p["estoque_atual"]) }}
+    </td>
+
+    <td class="text-end">
+      R$ {{ '%.2f'|format(p["valor_custo"]) }}
+    </td>
+
+    <td class="text-end">
+      <!-- Histórico -->
+      <a class="btn btn-sm btn-outline-warning"
+         href="/produtos/{{ p['id'] }}/estoque/historico">
+        Histórico
+      </a>
+
+      {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-info btnEditarProduto"
+          data-bs-toggle="modal"
+          data-bs-target="#modalEditarProduto"
+          data-id="{{ p['id'] }}"
+          data-nome="{{ p['nome'] }}"
+          data-marca="{{ p['marca'] }}"
+          data-modelo="{{ p['modelo'] }}"
+          data-unidade="{{ p['unidade'] }}"
+          data-valor="{{ '%.2f'|format(p['valor_custo']) }}"
+        >
+          Editar
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-success btnMovEstoque"
+          data-bs-toggle="modal"
+          data-bs-target="#modalMovEstoque"
+          data-id="{{ p['id'] }}"
+          data-nome="{{ p['nome'] }}"
+          data-unidade="{{ p['unidade'] }}"
+        >
+          Estoque
+        </button>
+      {% endif %}
+
+      {% if session['perfil'] in ['ADMIN', 'SUPER_ADMIN'] %}
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-danger btnExcluirProduto"
+          data-bs-toggle="modal"
+          data-bs-target="#modalExcluirProduto"
+          data-id="{{ p['id'] }}"
+          data-nome="{{ p['nome'] }}"
+        >
+          Excluir
+        </button>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+      </table>
+    </div>
+
+    {% if produtos|length == 0 %}
+      <div class="p-3 text-secondary">Nenhum produto cadastrado.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- =========================
+      MODAL EDITAR PRODUTO
+========================= -->
+<div class="modal fade" id="modalEditarProduto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Editar Produto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" id="formEditarProduto">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Nome</label>
+              <input class="form-control" name="nome" id="editProdNome" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Marca</label>
+              <input class="form-control" name="marca" id="editProdMarca">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Modelo</label>
+              <input class="form-control" name="modelo" id="editProdModelo">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label text-secondary">Unidade</label>
+              <select class="form-select" name="unidade" id="editProdUnidade">
+                <option value="UN">UN</option>
+                <option value="KG">KG</option>
+                <option value="L">L</option>
+                <option value="CX">CX</option>
+                <option value="PC">PC</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Valor custo (R$)</label>
+              <input class="form-control"
+                     name="valor_custo"
+                     id="editProdValor"
+                     data-money="1"
+                     inputmode="numeric"
+                     placeholder="Ex.: 25,90">
+              <small class="text-secondary">Digite apenas números (2590 = R$ 25,90)</small>
+            </div>
+
+            <div class="col-md-12">
+              <div class="alert alert-secondary bg-dark border-secondary small mb-0">
+                Estoque não é alterado aqui — use o botão <b>Estoque</b>.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-info">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+   MODAL MOVIMENTAÇÃO ESTOQUE
+========================= -->
+<div class="modal fade" id="modalMovEstoque" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Movimentar estoque</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" id="formMovEstoque">
+        <div class="modal-body">
+
+          <div class="mb-2">
+            Produto: <b id="movNomeProduto"></b>
+            <span class="text-secondary">(un: <span id="movUnProduto"></span>)</span>
+          </div>
+
+          <div class="row g-3">
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Tipo</label>
+              <select class="form-select" name="tipo" required>
+                <option value="ENTRADA">ENTRADA</option>
+                <option value="SAIDA">SAÍDA</option>
+                <option value="AJUSTE">AJUSTE (define estoque final)</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label text-secondary">Quantidade</label>
+              <input class="form-control" name="quantidade" value="1" required>
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label text-secondary">Observação (opcional)</label>
+              <input class="form-control" name="observacao" placeholder="Ex.: compra fornecedor, perda, contagem…">
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success">Salvar</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+      MODAL EXCLUIR PRODUTO
+========================= -->
+<div class="modal fade" id="modalExcluirProduto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-black text-light border border-secondary">
+
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold">Excluir Produto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        Tem certeza que deseja excluir o produto <b id="nomeExcluirProduto"></b>?
+        <div class="text-secondary small mt-2">
+          Obs.: Se possuir movimentações de estoque ou vínculos, o sistema bloqueará.
+        </div>
+      </div>
+
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+        <form method="POST" id="formExcluirProduto" class="d-inline">
+          <button class="btn btn-danger">Excluir</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+  // EDITAR PRODUTO
+  document.querySelectorAll(".btnEditarProduto").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("formEditarProduto").action = `/produtos/${btn.dataset.id}/editar`;
+      document.getElementById("editProdNome").value = btn.dataset.nome || "";
+      document.getElementById("editProdMarca").value = btn.dataset.marca || "";
+      document.getElementById("editProdModelo").value = btn.dataset.modelo || "";
+      document.getElementById("editProdUnidade").value = btn.dataset.unidade || "UN";
+      document.getElementById("editProdValor").value = btn.dataset.valor || "0";
+    });
+  });
+
+  // MOVIMENTAR ESTOQUE
+  document.querySelectorAll(".btnMovEstoque").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("formMovEstoque").action = `/produtos/${btn.dataset.id}/estoque/mov`;
+      document.getElementById("movNomeProduto").textContent = btn.dataset.nome;
+      document.getElementById("movUnProduto").textContent = btn.dataset.unidade;
+    });
+  });
+
+  // EXCLUIR PRODUTO
+  document.querySelectorAll(".btnExcluirProduto").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("formExcluirProduto").action = `/produtos/${btn.dataset.id}/excluir`;
+      document.getElementById("nomeExcluirProduto").textContent = btn.dataset.nome;
+    });
+  });
+
+</script>
+{% endblock %}
+
+
