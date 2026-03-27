@@ -29,17 +29,15 @@ if ENV_PATH.exists():
 # 🔗 DATABASE URL (CORRIGIDO)
 # ==========================================================
 def _get_database_url() -> str:
-    # 🔍 DEBUG (TEMPORÁRIO)
-    print("DEBUG DATABASE_URL_EXTERNAL:", os.environ.get("DATABASE_URL_EXTERNAL"))
-    print("DEBUG DATABASE_URL:", os.environ.get("DATABASE_URL"))
-
-    # 🔥 USAR SOMENTE A EXTERNA
-    dsn = os.environ.get("DATABASE_URL_EXTERNAL")
+    
+   
+    # 🔥 USAR DIRETO DO RAILWAY
+    dsn = os.environ.get("DATABASE_URL")
 
     if not dsn:
         raise RuntimeError(
-            "DATABASE_URL_EXTERNAL não encontrada no ambiente.\n"
-            "Configure no Railway com a URL externa do banco."
+            "DATABASE_URL não encontrada no ambiente.\n"
+            "Verifique as variáveis no Railway."
         )
 
     # validação básica
@@ -57,7 +55,6 @@ def _get_database_url() -> str:
     dsn = dsn.replace("\ufeff", "").strip()
 
     return dsn
-
 
 
 # ==========================================================
