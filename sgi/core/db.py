@@ -10,40 +10,59 @@ import psycopg2
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extensions import cursor as PGCursor
 from psycopg2.extras import RealDictCursor
+
 from dotenv import load_dotenv
 
-# Carrega .env com caminho absoluto: <raiz do projeto>/.env
-BASE_DIR = Path(__file__).resolve().parents[2]  # sai de sgi/core -> raiz
+# ==========================================================
+# 🔧 CARREGAMENTO DE AMBIENTE (LOCAL + PRODUÇÃO)
+# ==========================================================
+
+BASE_DIR = Path(__file__).resolve().parents[2]
 ENV_PATH = BASE_DIR / ".env"
-load_dotenv(dotenv_path=ENV_PATH, override=True, encoding="utf-8")
+
+# Só carrega .env se existir (LOCAL)
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 
+# ==========================================================
+# 🔗 DATABASE URL (CORRIGIDO)
+# ==========================================================
 def _get_database_url() -> str:
-    dsn = (os.getenv("DATABASE_URL") or "").strip()
+    # 🔍 DEBUG (TEMPORÁRIO)
+    print("DEBUG DATABASE_URL_EXTERNAL:", os.environ.get("DATABASE_URL_EXTERNAL"))
+    print("DEBUG DATABASE_URL:", os.environ.get("DATABASE_URL"))
+
+    # 🔥 USAR SOMENTE A EXTERNA
+    dsn = os.environ.get("DATABASE_URL_EXTERNAL")
 
     if not dsn:
         raise RuntimeError(
-            "DATABASE_URL não encontrada.\n"
-            f"Arquivo .env esperado em: {ENV_PATH}\n\n"
-            "Exemplo:\n"
-            "DATABASE_URL=postgresql://postgres:SENHA@localhost:5432/sgi_impressoras\n"
+            "DATABASE_URL_EXTERNAL não encontrada no ambiente.\n"
+            "Configure no Railway com a URL externa do banco."
         )
 
     # validação básica
     parsed = urlparse(dsn)
     if parsed.scheme not in ("postgresql", "postgres"):
         raise RuntimeError("DATABASE_URL inválida: use postgresql:// (ou postgres://).")
+
     if not parsed.hostname or not parsed.path or parsed.path == "/":
         raise RuntimeError(
             "DATABASE_URL inválida: faltando host ou database.\n"
             "Exemplo: postgresql://postgres:SENHA@localhost:5432/sgi_impressoras"
         )
 
-    # remove caracteres invisíveis comuns
+    # remove caracteres invisíveis
     dsn = dsn.replace("\ufeff", "").strip()
 
     return dsn
 
+
+
+# ==========================================================
+# 🔌 CONEXÃO
+# ==========================================================
 
 def conectar(*, dict_cursor: bool = True, connect_timeout: int = 10) -> PGConnection:
     dsn = _get_database_url()
@@ -55,16 +74,10 @@ def conectar(*, dict_cursor: bool = True, connect_timeout: int = 10) -> PGConnec
             connect_timeout=connect_timeout,
         )
     except UnicodeDecodeError as e:
-        # Mostra a URL real usada (repr) para descobrir a fonte do erro
         raise RuntimeError(
-            "Falha ao conectar: a DATABASE_URL que chegou no psycopg2 contém bytes inválidos.\n\n"
-            f"✅ ENV_PATH usado: {ENV_PATH}\n"
-            f"✅ DATABASE_URL (repr): {repr(dsn)}\n\n"
-            "Isso quase sempre acontece quando existe uma DATABASE_URL definida no Windows "
-            "com caracteres especiais/encoding ruim, e ela está sobrescrevendo.\n"
-            "Solução:\n"
-            "1) Remova DATABASE_URL do Ambiente do Windows (Usuário/Sistema) OU\n"
-            "2) Mantenha e deixe o código com override=True (já está).\n\n"
+            "Falha ao conectar: DATABASE_URL contém caracteres inválidos.\n\n"
+            f"ENV_PATH usado: {ENV_PATH}\n"
+            f"DATABASE_URL (repr): {repr(dsn)}\n\n"
             f"Erro original: {e}"
         )
 
@@ -75,6 +88,10 @@ def conectar(*, dict_cursor: bool = True, connect_timeout: int = 10) -> PGConnec
 
     return conn
 
+
+# ==========================================================
+# 🔄 CONTEXTOS
+# ==========================================================
 
 @contextmanager
 def get_conn(*, dict_cursor: bool = True) -> Iterable[PGConnection]:
@@ -101,6 +118,10 @@ def transaction(*, dict_cursor: bool = True) -> Iterable[Tuple[PGConnection, PGC
         finally:
             conn.close()
 
+
+# ==========================================================
+# 🧠 QUERY HELPER
+# ==========================================================
 
 def query(
     sql: str,
