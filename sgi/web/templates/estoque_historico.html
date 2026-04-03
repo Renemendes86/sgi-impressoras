@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}SGI - Histórico de Estoque{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold m-0">Histórico de Estoque</h3>
+    <div class="text-secondary">
+      Produto: <b class="text-light">{{ produto.nome }}</b>
+      {% if produto.marca %}| <span class="text-secondary">Marca:</span> <b class="text-light">{{ produto.marca }}</b>{% endif %}
+      {% if produto.modelo %}| <span class="text-secondary">Modelo:</span> <b class="text-light">{{ produto.modelo }}</b>{% endif %}
+      | <span class="text-secondary">Un:</span> <b class="text-light">{{ produto.unidade }}</b>
+      | <span class="text-secondary">Estoque atual:</span>
+      <b class="text-light">{{ '%.2f'|format(produto.estoque_atual) }}</b>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-light" href="/produtos">Voltar</a>
+    <a class="btn btn-outline-warning"
+       href="/produtos/{{ produto.id }}/estoque/historico.csv?data_ini={{ data_ini }}&data_fim={{ data_fim }}">
+      Baixar CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card bg-black border-secondary mb-3">
+  <div class="card-body">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label text-secondary">Data inicial</label>
+        <input type="date" class="form-control" name="data_ini" value="{{ data_ini }}">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label text-secondary">Data final</label>
+        <input type="date" class="form-control" name="data_fim" value="{{ data_fim }}">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label text-secondary">Registros por página</label>
+        <select class="form-select" name="per_page">
+          <option value="25"  {% if per_page == 25 %}selected{% endif %}>25</option>
+          <option value="50"  {% if per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+          <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+        </select>
+      </div>
+
+      <div class="col-md-4 text-end">
+        <button class="btn btn-success">Aplicar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- RESUMO UPGRADE -->
+<div class="row g-3 mb-3">
+
+  <div class="col-md-3">
+    <div class="card bg-black border-success h-100">
+      <div class="card-body">
+        <div class="text-success small">⬆ Entradas</div>
+        <div class="fs-3 fw-bold text-white">
+          {{ resumo.entradas or 0 }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-danger h-100">
+      <div class="card-body">
+        <div class="text-danger small">⬇ Saídas</div>
+        <div class="fs-3 fw-bold text-white">
+          {{ resumo.saidas or 0 }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-warning h-100">
+      <div class="card-body">
+        <div class="text-warning small">💰 Consumo (custos)</div>
+        <div class="fs-3 fw-bold text-white">
+          {{ resumo.consumo or 0 }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-black border-info h-100">
+      <div class="card-body">
+        <div class="text-info small">⚙ Ajustes</div>
+        <div class="fs-3 fw-bold text-white">
+          {{ resumo.ajustes or 0 }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TABELA -->
+<div class="card bg-black border-secondary">
+  <div class="card-body">
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="text-secondary small">
+        Total no período: <b class="text-light">{{ total_reg }}</b> registro(s)
+        | Página <b class="text-light">{{ page }}</b> de <b class="text-light">{{ total_pages }}</b>
+      </div>
+
+      <div class="text-secondary small">
+        Período: <b class="text-light">{{ data_ini }}</b> até <b class="text-light">{{ data_fim }}</b>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Tipo</th>
+            <th class="text-end">Quantidade</th>
+            <th>Observação</th>
+            <th>Usuário</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimentos %}
+          <tr>
+            <td class="text-secondary">{{ m.data_mov }}</td>
+
+            <td>
+              {% set t = (m.tipo or '') %}
+              {% if t == 'ENTRADA' %}
+                <span class="badge bg-success">ENTRADA</span>
+              {% elif t == 'SAIDA' %}
+                <span class="badge bg-danger">SAÍDA</span>
+              {% elif t == 'CONSUMO' %}
+                <span class="badge bg-warning text-dark">CONSUMO</span>
+              {% elif t == 'AJUSTE' %}
+                <span class="badge bg-info text-dark">AJUSTE</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ t }}</span>
+              {% endif %}
+            </td>
+
+            <td class="text-end">
+              {{ '%.2f'|format(m.quantidade or 0) }}
+              <span class="text-secondary">{{ produto.unidade }}</span>
+            </td>
+
+            <td class="text-secondary">{{ m.observacao }}</td>
+            <td class="text-secondary">{{ m.usuario }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if movimentos|length == 0 %}
+      <div class="p-3 text-secondary">
+        Nenhuma movimentação encontrada no período.
+      </div>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-secondary small">
+          Página {{ page }} de {{ total_pages }}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

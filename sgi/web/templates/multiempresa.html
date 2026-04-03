@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Painel Multiempresa{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold m-0">Painel Multiempresa</h3>
+    <div class="text-secondary">
+      Visão geral das empresas cadastradas
+    </div>
+  </div>
+
+  <a href="/dashboard" class="btn btn-outline-light">
+    Voltar
+  </a>
+</div>
+
+<!-- =========================
+     FILTRO POR EMPRESA
+========================= -->
+
+<div class="card bg-black border-secondary mb-4">
+  <div class="card-body">
+
+    <form method="GET" class="row g-3 align-items-end">
+
+      <div class="col-md-6">
+        <label class="form-label text-secondary fw-bold">
+          Filtrar por empresa
+        </label>
+
+        <select name="empresa_id" class="form-select">
+          <option value="">Todas as empresas</option>
+
+          {% for e in empresas %}
+            <option value="{{ e.id }}"
+              {% if filtro_empresa|string == e.id|string %}selected{% endif %}>
+              {{ e.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100">
+          Aplicar filtro
+        </button>
+      </div>
+
+      <div class="col-md-3">
+        <a href="/multiempresa" class="btn btn-outline-secondary w-100">
+          Limpar filtro
+        </a>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+<!-- =========================
+     TABELA DE RESUMO
+========================= -->
+<div class="card bg-black border-secondary">
+  <div class="card-body">
+
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover align-middle mb-0">
+
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th class="text-end">Clientes</th>
+            <th class="text-end">Impressoras</th>
+            <th class="text-end">Locadas</th>
+            <th class="text-end">Disponíveis</th>
+            <th class="text-end">Produtos</th>
+            {% if session.get("perfil") == "SUPER_ADMIN" or pode_ver_financeiro %}
+            <th class="text-end">Valor Aluguel</th>
+            {% endif %}
+            <th class="text-end">Ação</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in resumo %}
+          <tr>
+            <td class="fw-bold">{{ r.nome }}</td>
+
+            <td class="text-end">{{ r.total_clientes }}</td>
+            <td class="text-end">{{ r.total_impressoras }}</td>
+            <td class="text-end">{{ r.locadas }}</td>
+            <td class="text-end">{{ r.disponiveis }}</td>
+            <td class="text-end">{{ r.total_produtos }}</td>
+
+            <td class="text-end">
+
+          {% if session.get("perfil") == "SUPER_ADMIN" %}
+          R$ {{ '%.2f'|format(r.total_aluguel or 0) }}
+          {% elif pode_ver_financeiro %}
+          R$ {{ '%.2f'|format(r.total_aluguel or 0) }}
+          {% else %}
+          &nbsp;
+          {% endif %}
+          </td>
+
+            <td class="text-end">
+              <a href="/trocar-empresa/{{ r.id }}" 
+                 class="btn btn-sm btn-outline-warning">
+                 Usar
+              </a>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+
+    {% if resumo|length == 0 %}
+      <div class="text-secondary mt-3">
+        Nenhum registro encontrado.
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

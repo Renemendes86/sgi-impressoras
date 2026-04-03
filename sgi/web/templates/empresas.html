@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Empresas - SGI{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <h4 class="m-0 fw-bold">Empresas</h4>
+        <div class="text-secondary small">
+            Gerencie as empresas do sistema (somente ADMIN).
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#modalNovaEmpresa">
+            + Nova empresa
+        </button>
+
+        {% if session.get("empresa_id") %}
+            <a class="btn btn-outline-warning" href="/dashboard">Ir para o sistema</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if not empresas %}
+<div class="alert alert-warning bg-dark border-secondary text-light">
+    Nenhuma empresa cadastrada.
+</div>
+{% else %}
+
+<div class="card bg-black text-light border border-secondary">
+<div class="card-body p-0">
+
+<table class="table table-dark table-hover m-0 align-middle">
+<thead>
+<tr class="text-secondary">
+    <th>ID</th>
+    <th>Nome</th>
+    <th>CNPJ</th>
+    <th>Telefone</th>
+    <th>Email</th>
+    <th>Status</th>
+    <th class="text-end">Ações</th>
+</tr>
+</thead>
+
+<tbody>
+{% for e in empresas %}
+<tr>
+<td>#{{ e.id }}</td>
+
+<td>
+<strong>{{ e.nome }}</strong>
+{% if session.get("empresa_id")|int == e.id|int %}
+<span class="badge text-bg-warning ms-2">Selecionada</span>
+{% endif %}
+</td>
+
+<td>{{ e.cnpj or "-" }}</td>
+<td>{{ e.telefone or "-" }}</td>
+<td>{{ e.email or "-" }}</td>
+
+<td>
+{% if e.ativo %}
+<span class="badge text-bg-success">Ativa</span>
+{% else %}
+<span class="badge text-bg-secondary">Inativa</span>
+{% endif %}
+</td>
+
+<td class="text-end d-flex gap-2 justify-content-end">
+
+{% if e.ativo and session.get("empresa_id")|int != e.id|int %}
+<form method="POST" action="/selecionar-empresa">
+<input type="hidden" name="empresa_id" value="{{ e.id }}">
+<button class="btn btn-sm btn-outline-warning">Usar</button>
+</form>
+{% endif %}
+
+<button class="btn btn-sm btn-outline-light"
+data-bs-toggle="modal"
+data-bs-target="#modalEditarEmpresa"
+data-id="{{ e.id }}"
+data-nome="{{ e.nome }}"
+data-cnpj="{{ e.cnpj or '' }}"
+data-endereco="{{ e.endereco or '' }}"
+data-telefone="{{ e.telefone or '' }}"
+data-email="{{ e.email or '' }}"
+data-ativo="{{ '1' if e.ativo else '0' }}">
+Editar
+</button>
+
+{% if session.get("empresa_id")|int != e.id|int %}
+<button class="btn btn-sm btn-outline-danger"
+data-bs-toggle="modal"
+data-bs-target="#modalExcluirEmpresa"
+data-id="{{ e.id }}"
+data-nome="{{ e.nome }}">
+Excluir
+</button>
+{% endif %}
+
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+</div>
+</div>
+{% endif %}
+
+<!-- MODAL NOVA EMPRESA -->
+<div class="modal fade" id="modalNovaEmpresa">
+<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-content bg-black text-light border border-secondary">
+<form method="POST" action="/empresas/novo">
+<div class="modal-header">
+<h5 class="modal-title">Nova Empresa</h5>
+<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input class="form-control mb-2" name="nome" placeholder="Nome" required>
+<input class="form-control mb-2" name="cnpj" placeholder="CNPJ">
+<input class="form-control mb-2" name="endereco" placeholder="Endereço">
+<input class="form-control mb-2" name="telefone" placeholder="Telefone">
+<input class="form-control" name="email" placeholder="E-mail">
+</div>
+<div class="modal-footer">
+<button class="btn btn-success">Cadastrar</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal fade" id="modalEditarEmpresa">
+<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-content bg-black text-light border border-secondary">
+<form method="POST" id="formEditarEmpresa">
+<div class="modal-header">
+<h5 class="modal-title">Editar Empresa</h5>
+<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+<input type="hidden" id="editId">
+<input class="form-control mb-2" id="editNome" name="nome">
+<input class="form-control mb-2" id="editCnpj" name="cnpj">
+<input class="form-control mb-2" id="editEndereco" name="endereco">
+<input class="form-control mb-2" id="editTelefone" name="telefone">
+<input class="form-control mb-2" id="editEmail" name="email">
+<select class="form-select" id="editAtivo" name="ativo">
+<option value="1">Ativa</option>
+<option value="0">Inativa</option>
+</select>
+</div>
+<div class="modal-footer">
+<button class="btn btn-info">Salvar</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<!-- MODAL EXCLUIR -->
+<div class="modal fade" id="modalExcluirEmpresa">
+<div class="modal-dialog modal-dialog-centered">
+<div class="modal-content bg-black text-light border border-danger">
+<form method="POST" id="formExcluirEmpresa">
+<div class="modal-header">
+<h5 class="modal-title text-danger">Excluir Empresa</h5>
+<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+Deseja excluir <strong id="excluirEmpresaNome"></strong>?
+</div>
+<div class="modal-footer">
+<button class="btn btn-danger">Excluir</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+document.getElementById("modalExcluirEmpresa")
+.addEventListener("show.bs.modal", e => {
+const b = e.relatedTarget;
+document.getElementById("excluirEmpresaNome").innerText = b.dataset.nome;
+document.getElementById("formExcluirEmpresa").action = `/empresas/${b.dataset.id}/excluir`;
+});
+
+document.getElementById("modalEditarEmpresa")
+.addEventListener("show.bs.modal", e => {
+const b = e.relatedTarget;
+document.getElementById("editId").value = b.dataset.id;
+document.getElementById("editNome").value = b.dataset.nome;
+document.getElementById("editCnpj").value = b.dataset.cnpj;
+document.getElementById("editEndereco").value = b.dataset.endereco;
+document.getElementById("editTelefone").value = b.dataset.telefone;
+document.getElementById("editEmail").value = b.dataset.email;
+document.getElementById("editAtivo").value = b.dataset.ativo;
+document.getElementById("formEditarEmpresa").action = `/empresas/${b.dataset.id}/editar`;
+});
+
+});
+</script>
+{% endblock %}

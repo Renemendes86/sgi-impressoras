@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SGI - Clientes</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.1.8/css/dataTables.dataTables.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+
+<body class="bg-dark text-light">
+
+ <div class="container-fluid py-4 px-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-bold m-0">Cadastro de Clientes</h3>
+      <div class="text-secondary">Perfil: {{ session['perfil'] }}</div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light" href="/dashboard">Voltar</a>
+
+      {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovo">
+        + Novo Cliente
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card bg-black border-secondary">
+    <div class="card-body p-2">
+      <table id="tabelaClientes" class="table table-dark table-striped table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 70px;">ID</th>
+            <th style="width: 110px;">Tipo</th>
+            <th>Nome</th>
+            <th style="width: 200px;">Município</th>
+            <th style="width: 170px;">CPF/CNPJ</th>
+            <th style="width: 160px;">Telefone</th>
+            <th style="width: 250px;">E-mail</th>
+            <th style="width: 190px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clientes %}
+          <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.tipo_pessoa }}</td>
+            <td class="text-truncate" style="max-width: 520px;">{{ c.nome }}</td>
+            <td>{{ c.municipio_nome or '' }}</td>
+            <td>{{ c.cnpj_cpf }}</td>
+            <td>{{ c.telefone or "" }}</td>
+            <td class="text-truncate" style="max-width: 320px;">{{ c.email or "" }}</td>
+            <td>
+              {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
+              <button class="btn btn-sm btn-outline-info"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalEditar"
+                      data-id="{{ c.id }}"
+                      data-tipo="{{ c.tipo_pessoa }}"
+                      data-nome="{{ c.nome }}"
+                      data-doc="{{ c.cnpj_cpf }}"
+                      data-tel="{{ c.telefone or '' }}"
+                      data-email="{{ c.email or '' }}"
+                      data-municipio="{{ c.municipio_id or '' }}">
+              Editar
+              </button>
+              {% endif %}
+
+              {% if session['perfil'] in ['ADMIN','SUPER_ADMIN'] %}
+              <button class="btn btn-sm btn-outline-danger btnExcluir"
+                      data-id="{{ c.id }}">
+                Excluir
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Novo -->
+<div class="modal fade" id="modalNovo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black border-secondary text-light">
+      <div class="modal-header">
+        <h5 class="modal-title">Novo Cliente</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <form method="POST" action="/clientes/novo" autocomplete="off" id="formNovoCliente">
+        
+        
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" name="tipo_pessoa" id="novo_tipo" required>
+                <option value="JURIDICA">Jurídica</option>
+                <option value="FISICA">Física</option>
+              </select>
+            </div>
+
+             <div class="col-md-9">
+              <label class="form-label">Nome</label>
+              <input class="form-control" name="nome" id="novo_nome" required maxlength="120">
+            </div>
+
+        <div class="col-md-6">
+              <label class="form-label">CPF/CNPJ</label>
+
+              <div class="input-group">
+                <input class="form-control" name="cnpj_cpf" id="novo_doc" required inputmode="numeric" autocomplete="off">
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        id="btnBuscarNovo"
+                        title="Buscar dados pelo CNPJ (somente Jurídica)">
+                  Pesquisar
+                </button>
+              </div>
+
+              <small class="text-secondary" id="novo_hint"></small>
+              <div class="invalid-feedback" id="novo_doc_invalid">Documento inválido.</div>
+            </div>
+
+
+            <div class="col-md-6">
+              <label class="form-label">Município</label>
+
+              <select class="form-select" name="municipio_id" id="edit_municipio">
+
+                <option value="">Selecione</option>
+
+                {% for m in municipios %}
+                <option value="{{ m.id }}">
+                  {{ m.nome }}
+                </option>
+                {% endfor %}
+
+              </select>
+            </div>
+
+            
+            <div class="col-md-3">
+              <label class="form-label">E-mail</label>
+              <input class="form-control" name="email" id="novo_email" type="email" maxlength="120">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label">Telefone</label>
+              <input class="form-control" name="telefone" id="novo_tel" inputmode="numeric" autocomplete="off" maxlength="20">
+              <small class="text-secondary">Ex.: (63) 99999-9999</small>
+            </div>
+
+            
+          </div>
+
+          <div class="mt-3 d-none" id="novo_busca_status">
+            <div class="alert alert-secondary py-2 mb-0">
+              <span id="novo_busca_msg">Buscando dados do CNPJ...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline-light" data-bs-dismiss="modal" type="button">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Salvar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-black border-secondary text-light">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Cliente</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <form id="formEditar" method="POST" autocomplete="off">
+
+<div class="modal-body">
+  <div class="row g-3">
+
+    <div class="col-md-3">
+      <label class="form-label">Tipo</label>
+      <select class="form-select" name="tipo_pessoa" id="edit_tipo" required>
+        <option value="JURIDICA">Jurídica</option>
+        <option value="FISICA">Física</option>
+      </select>
+    </div>
+
+    <div class="col-md-9">
+      <label class="form-label">Nome</label>
+      <input class="form-control" name="nome" id="edit_nome" required maxlength="120">
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">CPF/CNPJ</label>
+
+      <div class="input-group">
+        <input class="form-control" name="cnpj_cpf" id="edit_doc" required inputmode="numeric" autocomplete="off">
+        <button class="btn btn-outline-secondary"
+                type="button"
+                id="btnBuscarEdit"
+                title="Buscar dados pelo CNPJ (somente Jurídica)">
+          Pesquisar
+        </button>
+      </div>
+
+      <small class="text-secondary" id="edit_hint"></small>
+      <div class="invalid-feedback" id="edit_doc_invalid">Documento inválido.</div>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Município</label>
+      <select class="form-select" name="municipio_id" id="edit_municipio">
+        <option value="">Selecione</option>
+        {% for m in municipios %}
+        <option value="{{ m.id }}">
+          {{ m.nome }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">E-mail</label>
+      <input class="form-control" name="email" id="edit_email" type="email" maxlength="120">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Telefone</label>
+      <input class="form-control" name="telefone" id="edit_tel" inputmode="numeric" autocomplete="off" maxlength="20">
+      <small class="text-secondary">Ex.: (63) 99999-9999</small>
+    </div>
+
+  </div>
+
+  <div class="mt-3 d-none" id="edit_busca_status">
+    <div class="alert alert-secondary py-2 mb-0">
+      <span id="edit_busca_msg">Buscando dados do CNPJ...</span>
+    </div>
+  </div>
+</div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-light" data-bs-dismiss="modal" type="button">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Atualizar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUCESSO -->
+<div class="modal fade" id="modalSucesso" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-black border-secondary text-light">
+
+      <div class="modal-header">
+        <h5 class="modal-title text-success fw-bold">Sucesso</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body text-center fs-5" id="msgSucesso"></div>
+
+      <div class="modal-footer justify-content-center">
+        <button class="btn btn-outline-light px-5" data-bs-dismiss="modal">
+          Ok
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ERRO -->
+<div class="modal fade" id="modalErro" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-black border-danger text-light">
+
+      <div class="modal-header">
+        <h5 class="modal-title text-danger fw-bold">Erro</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body text-center fs-5" id="msgErro"></div>
+
+      <div class="modal-footer justify-content-center">
+        <button class="btn btn-outline-light px-5" data-bs-dismiss="modal">
+          Ok
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-black border-warning text-light">
+
+      <div class="modal-header">
+        <h5 class="modal-title text-warning fw-bold">Confirmação</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body text-center">
+        Deseja realmente excluir este cliente?
+      </div>
+
+      <div class="modal-footer justify-content-center">
+
+        <form id="formExcluir" method="POST">
+          <button class="btn btn-outline-light px-4">Sim</button>
+        </form>
+
+        <button class="btn btn-secondary px-4" data-bs-dismiss="modal" type="button">
+          Cancelar
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="flash-data"
+     data-messages='{{ get_flashed_messages(with_categories=true) | tojson | safe }}'>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
+
+<script>
+// ==========================
+// DATATABLES
+// ==========================
+new DataTable('#tabelaClientes', {
+  pageLength: 20,
+  order: [[0, "desc"]],
+  language: { url: "https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json" }
+});
+
+// ==========================
+// PREENCHER MODAL EDITAR
+// ==========================
+const modalEditar = document.getElementById('modalEditar');
+
+if (modalEditar) {
+
+  modalEditar.addEventListener('show.bs.modal', function (event) {
+
+    const btn = event.relatedTarget;
+
+    const id = btn.getAttribute('data-id');
+
+    document.getElementById('edit_tipo').value = btn.getAttribute('data-tipo');
+    document.getElementById('edit_nome').value = btn.getAttribute('data-nome');
+    document.getElementById('edit_doc').value  = btn.getAttribute('data-doc');
+    document.getElementById('edit_tel').value  = btn.getAttribute('data-tel');
+    document.getElementById('edit_email').value= btn.getAttribute('data-email');
+    document.getElementById('edit_municipio').value =
+      btn.getAttribute('data-municipio') || "";
+
+    document.getElementById('formEditar').action = `/clientes/${id}/editar`;
+
+    // Reaplica máscaras quando abrir
+    setTimeout(() => {
+
+      const tipoEl = document.getElementById("edit_tipo");
+      const docEl  = document.getElementById("edit_doc");
+      const telEl  = document.getElementById("edit_tel");
+
+      configDoc(tipoEl, docEl, document.getElementById("edit_hint"));
+      aplicarMascaraDoc(tipoEl, docEl);
+      aplicarMascaraTelefone(telEl);
+
+    }, 0);
+
+  });
+
+}
+</script>
+
+<script>
+  // ==========================
+  // HELPERS
+  // ==========================
+  function somenteNumeros(v) {
+    return (v || "").replace(/\D/g, "");
+  }
+
+  // ---- CPF/CNPJ máscaras
+  function mascararCPF(v) {
+    v = somenteNumeros(v).slice(0, 11);
+    v = v.replace(/(\d{3})(\d)/, "$1.$2");
+    v = v.replace(/(\d{3})(\d)/, "$1.$2");
+    v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    return v;
+  }
+
+  function mascararCNPJ(v) {
+    v = somenteNumeros(v).slice(0, 14);
+    v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+    v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+    v = v.replace(/(\d{4})(\d)/, "$1-$2");
+    return v;
+  }
+
+  // ---- telefone máscara (BR)
+  // (##) ####-#### ou (##) #####-####
+  function mascararTelefone(v) {
+    v = somenteNumeros(v).slice(0, 11);
+
+    if (v.length <= 10) {
+      // (99) 9999-9999
+      v = v.replace(/^(\d{2})(\d)/, "($1) $2");
+      v = v.replace(/(\d{4})(\d)/, "$1-$2");
+      return v;
+    }
+
+    // (99) 99999-9999
+    v = v.replace(/^(\d{2})(\d)/, "($1) $2");
+    v = v.replace(/(\d{5})(\d)/, "$1-$2");
+    return v;
+  }
+
+  // ==========================
+  // VALIDADORES CPF/CNPJ
+  // ==========================
+  function cpfValido(cpf) {
+    cpf = somenteNumeros(cpf);
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += parseInt(cpf[i]) * (10 - i);
+    let d1 = (soma * 10) % 11;
+    if (d1 === 10) d1 = 0;
+    if (d1 !== parseInt(cpf[9])) return false;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) soma += parseInt(cpf[i]) * (11 - i);
+    let d2 = (soma * 10) % 11;
+    if (d2 === 10) d2 = 0;
+    return d2 === parseInt(cpf[10]);
+  }
+
+  function cnpjValido(cnpj) {
+    cnpj = somenteNumeros(cnpj);
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1+$/.test(cnpj)) return false;
+
+    const pesos1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+    const pesos2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+
+    let soma = 0;
+    for (let i = 0; i < 12; i++) soma += parseInt(cnpj[i]) * pesos1[i];
+    let r = soma % 11;
+    let d1 = (r < 2) ? 0 : (11 - r);
+    if (d1 !== parseInt(cnpj[12])) return false;
+
+    soma = 0;
+    for (let i = 0; i < 13; i++) soma += parseInt(cnpj[i]) * pesos2[i];
+    r = soma % 11;
+    let d2 = (r < 2) ? 0 : (11 - r);
+    return d2 === parseInt(cnpj[13]);
+  }
+
+  // ==========================
+  // CONFIG/VALIDAÇÃO DOC
+  // ==========================
+  function configDoc(tipoEl, docEl, hintEl) {
+    const tipo = tipoEl.value;
+
+    if (tipo === "FISICA") {
+      docEl.placeholder = "000.000.000-00";
+      if (hintEl) hintEl.textContent = "Obrigatório CPF válido (com dígitos verificadores).";
+    } else {
+      docEl.placeholder = "00.000.000/0000-00";
+      if (hintEl) hintEl.textContent = "Obrigatório CNPJ válido (com dígitos verificadores).";
+    }
+  }
+
+  function aplicarMascaraDoc(tipoEl, docEl) {
+    const tipo = tipoEl.value;
+    if (tipo === "FISICA") docEl.value = mascararCPF(docEl.value);
+    else docEl.value = mascararCNPJ(docEl.value);
+  }
+
+  function validarDocReal(tipoEl, docEl) {
+    const tipo = tipoEl.value;
+    if (tipo === "FISICA") return cpfValido(docEl.value);
+    return cnpjValido(docEl.value);
+  }
+
+  function msgErroDoc(tipoEl) {
+    return (tipoEl.value === "FISICA")
+      ? "CPF inválido. Verifique os dígitos verificadores."
+      : "CNPJ inválido. Verifique os dígitos verificadores.";
+  }
+
+  // ==========================
+  // MÁSCARA TELEFONE
+  // ==========================
+  function aplicarMascaraTelefone(telEl) {
+    if (!telEl) return;
+    telEl.value = mascararTelefone(telEl.value);
+  }
+
+  // ==========================
+  // BUSCA CNPJ (FRONT)
+  // ==========================
+  async function buscarCnpjEPreencher(opts) {
+    const {
+      tipoEl, docEl, nomeEl, telEl, emailEl,
+      statusBoxEl, statusMsgEl
+    } = opts;
+
+    if (tipoEl.value !== "JURIDICA") {
+      alert("A pesquisa automática é somente para CNPJ (Pessoa Jurídica).");
+      return;
+    }
+
+    const cnpj = somenteNumeros(docEl.value);
+    if (cnpj.length !== 14 || !cnpjValido(cnpj)) {
+      alert("Informe um CNPJ válido antes de pesquisar.");
+      docEl.focus();
+      return;
+    }
+
+    // UI status
+    if (statusBoxEl) statusBoxEl.classList.remove("d-none");
+    if (statusMsgEl) statusMsgEl.textContent = "Buscando dados do CNPJ...";
+
+    try {
+      // ✅ seu back-end deve expor isso:
+      // GET /api/cnpj/<cnpj> -> { ok: true, nome: "...", telefone: "...", email: "..." }
+      const resp = await fetch(`/api/cnpj/${cnpj}`, { method: "GET" });
+      const data = await resp.json();
+
+      if (!resp.ok || !data || data.ok !== true) {
+        throw new Error(data?.message || "Não foi possível consultar o CNPJ.");
+      }
+
+      // Preenche (se vierem)
+      if (data.nome && nomeEl) nomeEl.value = data.nome;
+      if (data.telefone && telEl) {
+        telEl.value = data.telefone;
+        aplicarMascaraTelefone(telEl);
+      }
+      if (data.email && emailEl) emailEl.value = data.email;
+
+      if (statusMsgEl) statusMsgEl.textContent = "Dados encontrados e preenchidos.";
+      setTimeout(() => statusBoxEl && statusBoxEl.classList.add("d-none"), 1500);
+
+    } catch (err) {
+      if (statusMsgEl) statusMsgEl.textContent = "Falha ao buscar CNPJ.";
+      setTimeout(() => statusBoxEl && statusBoxEl.classList.add("d-none"), 1500);
+      alert(err?.message || "Erro ao buscar CNPJ.");
+    }
+  }
+
+  // ==========================
+  // BIND MODAIS
+  // ==========================
+  function bindFormCliente(prefix) {
+    const tipoEl = document.getElementById(`${prefix}_tipo`);
+    const docEl  = document.getElementById(`${prefix}_doc`);
+    const hintEl = document.getElementById(`${prefix}_hint`);
+    const nomeEl = document.getElementById(`${prefix}_nome`);
+    const telEl  = document.getElementById(`${prefix}_tel`);
+    const emailEl= document.getElementById(`${prefix}_email`);
+    const formEl = document.getElementById(prefix === "novo" ? "formNovoCliente" : "formEditar");
+
+    const btnBuscar = document.getElementById(prefix === "novo" ? "btnBuscarNovo" : "btnBuscarEdit");
+    const statusBoxEl = document.getElementById(`${prefix}_busca_status`);
+    const statusMsgEl = document.getElementById(`${prefix}_busca_msg`);
+
+    if (!tipoEl || !docEl) return;
+
+    // init
+    configDoc(tipoEl, docEl, hintEl);
+
+    // tipo change
+    tipoEl.addEventListener("change", () => {
+      docEl.value = "";
+      configDoc(tipoEl, docEl, hintEl);
+      docEl.classList.remove("is-invalid");
+    });
+
+    // doc mask
+    docEl.addEventListener("input", () => {
+      aplicarMascaraDoc(tipoEl, docEl);
+      docEl.classList.remove("is-invalid");
+    });
+
+    // tel mask
+    if (telEl) {
+      telEl.addEventListener("input", () => aplicarMascaraTelefone(telEl));
+    }
+
+    // buscar cnpj
+    if (btnBuscar) {
+      btnBuscar.addEventListener("click", () => buscarCnpjEPreencher({
+        tipoEl, docEl, nomeEl, telEl, emailEl, statusBoxEl, statusMsgEl
+      }));
+    }
+
+    // submit validate
+    if (formEl) {
+      formEl.addEventListener("submit", (e) => {
+        const ok = validarDocReal(tipoEl, docEl);
+        if (!ok) {
+          e.preventDefault();
+          docEl.classList.add("is-invalid");
+          alert(msgErroDoc(tipoEl));
+          docEl.focus();
+          return;
+        }
+        docEl.classList.remove("is-invalid");
+      });
+    }
+  }
+
+  // NOVO e EDITAR
+  bindFormCliente("novo");
+  bindFormCliente("edit");
+</script>
+
+<script>
+document.querySelectorAll(".btnExcluir").forEach(btn => {
+  btn.addEventListener("click", function () {
+
+    const id = this.dataset.id;
+
+    const form = document.getElementById("formExcluir");
+    form.action = `/clientes/${id}/excluir`;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalConfirmar"));
+    modal.show();
+  });
+});
+</script>
+
+<script>
+// ==========================
+// MODAL SUCESSO PADRÃO
+// ==========================
+document.addEventListener("DOMContentLoaded", function () {
+
+  const flashDiv = document.getElementById("flash-data");
+  if (!flashDiv) return;
+
+  const messages = JSON.parse(flashDiv.dataset.messages || "[]");
+
+  messages.forEach(([category, message]) => {
+
+    if (category === "modal_success") {
+      const modal = new bootstrap.Modal(document.getElementById("modalSucesso"));
+      document.getElementById("msgSucesso").textContent = message;
+      modal.show();
+    }
+
+    if (category === "modal_error") {
+      const modal = new bootstrap.Modal(document.getElementById("modalErro"));
+      document.getElementById("msgErro").textContent = message;
+      modal.show();
+    }
+
+  });
+
+});
+
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const modalEl = document.getElementById("modalConfirmar");
+  const modal = new bootstrap.Modal(modalEl);
+
+  document.querySelectorAll(".btnExcluir").forEach(btn => {
+
+    btn.addEventListener("click", function () {
+
+      const id = this.dataset.id;
+
+      const form = document.getElementById("formExcluir");
+      form.action = `/clientes/${id}/excluir`;
+
+      modal.show();
+
+    });
+
+  });
+
+  // 🔥 CORREÇÃO DO TRAVAMENTO
+  modalEl.addEventListener('hidden.bs.modal', function () {
+
+    document.body.classList.remove('modal-open');
+
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(el => el.remove());
+
+  });
+
+});
+</script>
+
+</body>
+</html>

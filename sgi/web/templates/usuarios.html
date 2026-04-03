@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+   <h3 class="fw-bold text-light m-0">Usuários</h3>
+
+    <a href="/usuarios/novo" class="btn btn-success">
+      Novo Usuário
+    </a>
+  </div>
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h4 class="m-0 fw-bold">Gestão de Usuários</h4>
+    <div class="text-secondary small">
+      Controle de usuários, permissões e acessos (Administrador).
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="/dashboard" class="btn btn-outline-secondary">
+      Voltar
+    </a>
+  </div>
+</div>
+
+<div class="card bg-black text-light border border-secondary shadow-sm">
+  <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+    <div class="fw-bold">Usuários cadastrados</div>
+    <div class="text-secondary small">
+      Total: <b class="text-light">{{ usuarios|length }}</b>
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-hover align-middle m-0">
+        <thead>
+          <tr class="text-secondary">
+            <th>Usuário</th>
+            <th>Empresa</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th>Multiempresa</th>
+            <th class="text-end" style="width: 260px;">Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for u in usuarios %}
+          <tr>
+            <td class="fw-semibold">{{ u.usuario }}</td>
+
+            <td class="text-secondary">
+              {{ u.empresa_nome }}
+            </td>
+
+            <td>
+              <span class="badge
+                {% if u.perfil == 'ADMIN' %}
+                  text-bg-warning
+                {% elif u.perfil == 'OPERADOR' %}
+                  text-bg-info
+                {% else %}
+                  text-bg-secondary
+                {% endif %}
+              ">
+                {{ u.perfil }}
+              </span>
+            </td>
+
+            <td>
+              {% if u.ativo %}
+                <span class="badge text-bg-success">Ativo</span>
+              {% else %}
+                <span class="badge text-bg-danger">Inativo</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if u.pode_multiempresa %}
+                <span class="badge text-bg-info">Sim</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Não</span>
+              {% endif %}
+            </td>
+
+            <td class="text-end d-flex justify-content-end gap-2 flex-wrap">
+
+            <!-- ATIVAR / DESATIVAR -->
+            <form method="POST" action="/usuarios/{{ u.id }}/status" class="m-0">
+              <button
+                class="btn btn-sm btn-outline-warning"
+                {% if session.get("usuario_id") == u.id %}disabled{% endif %}
+                title="Ativar / Desativar"
+              >
+                {% if u.ativo %}
+                  Desativar
+                {% else %}
+                  Ativar
+                {% endif %}
+              </button>
+            </form>
+
+            <!-- RESET SENHA -->
+            <form method="POST" action="/usuarios/{{ u.id }}/reset-senha" class="m-0">
+              <button
+                class="btn btn-sm btn-outline-light"
+                title="Redefinir senha"
+              >
+                Resetar senha
+              </button>
+            </form>
+
+            <!-- PERMISSÕES -->
+            <a href="/usuarios/{{ u.id }}/permissoes"
+              class="btn btn-sm btn-warning">
+              Permissões
+            </a>
+            <!-- EDITAR -->
+            <a href="/usuarios/{{ u.id }}/editar"
+              class="btn btn-sm btn-primary">
+              Editar
+            </a>
+
+            <!-- EXCLUIR -->
+            <form method="POST"
+                  action="/usuarios/{{ u.id }}/excluir"
+                  style="display:inline;"
+                  data-confirm="Deseja realmente excluir este usuário?">
+              <button type="submit"
+                      class="btn btn-sm btn-danger">
+                  Excluir
+              </button>
+            </form>
+          </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
