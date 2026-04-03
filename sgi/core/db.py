@@ -26,35 +26,40 @@ if ENV_PATH.exists():
 
 
 # ==========================================================
-# 🔗 DATABASE URL (CORRIGIDO)
+# 🔗 DATABASE URL (PROFISSIONAL - HÍBRIDO)
 # ==========================================================
 def _get_database_url() -> str:
-    
-   
-    # 🔥 USAR DIRETO DO RAILWAY
+
+    # 🔥 1. PRODUÇÃO (Railway / Variáveis de ambiente)
     dsn = os.environ.get("DATABASE_URL")
 
-    if not dsn:
-        raise RuntimeError(
-            "DATABASE_URL não encontrada no ambiente.\n"
-            "Verifique as variáveis no Railway."
-        )
+    if dsn:
+        dsn = dsn.replace("\ufeff", "").strip()
 
-    # validação básica
-    parsed = urlparse(dsn)
-    if parsed.scheme not in ("postgresql", "postgres"):
-        raise RuntimeError("DATABASE_URL inválida: use postgresql:// (ou postgres://).")
+        parsed = urlparse(dsn)
+        if parsed.scheme not in ("postgresql", "postgres"):
+            raise RuntimeError("DATABASE_URL inválida. Use postgresql://")
 
-    if not parsed.hostname or not parsed.path or parsed.path == "/":
-        raise RuntimeError(
-            "DATABASE_URL inválida: faltando host ou database.\n"
-            "Exemplo: postgresql://postgres:SENHA@localhost:5432/sgi_impressoras"
-        )
+        if not parsed.hostname or not parsed.path or parsed.path == "/":
+            raise RuntimeError("DATABASE_URL inválida: faltando host ou database.")
 
-    # remove caracteres invisíveis
-    dsn = dsn.replace("\ufeff", "").strip()
+        return dsn
 
-    return dsn
+    # 🔥 2. LOCAL (.env)
+    dbname = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    host = os.getenv("DB_HOST", "localhost")
+    port = os.getenv("DB_PORT", "5432")
+
+    if dbname and user:
+        return f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+
+    # 🔥 3. ERRO CONTROLADO
+    raise RuntimeError(
+        "Nenhuma configuração de banco encontrada.\n"
+        "Defina DATABASE_URL (produção) ou DB_* no .env (local)."
+    )
 
 
 # ==========================================================
