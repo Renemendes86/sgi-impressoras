@@ -22,7 +22,7 @@ ENV_PATH = BASE_DIR / ".env"
 
 # Só carrega .env se existir (LOCAL)
 if ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    load_dotenv(dotenv_path=ENV_PATH)
 
 
 # ==========================================================
