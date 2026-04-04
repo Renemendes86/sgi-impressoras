@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 ENV_PATH = BASE_DIR / ".env"
 
 # Só carrega .env se existir (LOCAL)
-if ENV_PATH.exists():
+if ENV_PATH.exists() and not os.environ.get("DATABASE_URL"):
     load_dotenv(dotenv_path=ENV_PATH)
 
 
