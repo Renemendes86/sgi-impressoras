@@ -121,17 +121,32 @@ def configurar_rotas_produtos(app):
         marca = request.form.get("marca", "").strip()
         modelo = request.form.get("modelo", "").strip()
         unidade = request.form.get("unidade", "UN").upper()
-        valor_custo = parse_decimal(request.form.get("valor_custo"))
-        estoque_inicial = parse_decimal(request.form.get("estoque_inicial"))
 
+        # 🔥 CORREÇÃO PRINCIPAL (evita erro com campo vazio)
+        valor_custo = parse_decimal(request.form.get("valor_custo")) or 0
+        estoque_inicial = parse_decimal(request.form.get("estoque_inicial")) or 0
+
+        # 🔒 VALIDAÇÕES
         if not nome:
             flash("Informe o nome do produto.", "warning")
             return redirect("/produtos")
+
+        if not empresa_id:
+            flash("Erro: empresa não selecionada.", "danger")
+            return redirect("/selecionar-empresa")
 
         conn = conectar()
         cur = conn.cursor()
 
         try:
+            # 🔍 DEBUG (ajuda MUITO em produção)
+            print("=== DEBUG PRODUTO ===")
+            print("EMPRESA_ID:", empresa_id)
+            print("NOME:", nome)
+            print("VALOR_CUSTO:", valor_custo)
+            print("ESTOQUE_INICIAL:", estoque_inicial)
+
+            # INSERT PRODUTO
             cur.execute("""
                 INSERT INTO produtos
                 (empresa_id, nome, marca, modelo, valor_custo, unidade, estoque_atual)
@@ -142,9 +157,10 @@ def configurar_rotas_produtos(app):
                 valor_custo, unidade, estoque_inicial
             ))
 
-            prod_id = cur.fetchone()[0]
+            prod_id = cur.fetchone()["id"] 
 
-            if estoque_inicial > 0:
+            # MOVIMENTO DE ESTOQUE (somente se tiver valor)
+            if estoque_inicial and estoque_inicial > 0:
                 cur.execute("""
                     INSERT INTO estoque_movimentos
                     (produto_id, tipo, quantidade, observacao, usuario)
@@ -155,8 +171,12 @@ def configurar_rotas_produtos(app):
             flash("Produto cadastrado com sucesso.", "success")
 
         except Exception as e:
+            import traceback
+            print("=== ERRO AO SALVAR PRODUTO ===")
+            print(traceback.format_exc())
+
             conn.rollback()
-            flash(str(e), "danger")
+            flash(f"Erro ao salvar produto: {e}", "danger")
 
         finally:
             cur.close()
@@ -179,16 +199,30 @@ def configurar_rotas_produtos(app):
         marca = request.form.get("marca", "").strip()
         modelo = request.form.get("modelo", "").strip()
         unidade = request.form.get("unidade", "UN").strip().upper()
-        valor_custo = parse_decimal(request.form.get("valor_custo", "0"))
 
+        # 🔥 CORREÇÃO SEGURA
+        valor_custo = parse_decimal(request.form.get("valor_custo")) or 0
+
+        # 🔒 VALIDAÇÕES
         if not nome:
             flash("Informe o nome do produto.", "warning")
             return redirect("/produtos")
+
+        if not empresa_id:
+            flash("Erro: empresa não selecionada.", "danger")
+            return redirect("/selecionar-empresa")
 
         conn = conectar()
         cur = conn.cursor()
 
         try:
+            # 🔍 DEBUG
+            print("=== DEBUG EDITAR PRODUTO ===")
+            print("PROD_ID:", prod_id)
+            print("EMPRESA_ID:", empresa_id)
+            print("NOME:", nome)
+            print("VALOR_CUSTO:", valor_custo)
+
             cur.execute("""
                 UPDATE produtos
                 SET nome=%s,
@@ -205,12 +239,16 @@ def configurar_rotas_produtos(app):
 
             if cur.rowcount == 0:
                 conn.rollback()
-                flash("Produto não encontrado.", "danger")
+                flash("Produto não encontrado ou não pertence a esta empresa.", "danger")
             else:
                 conn.commit()
                 flash("Produto atualizado com sucesso.", "success")
 
         except Exception as e:
+            import traceback
+            print("=== ERRO AO ATUALIZAR PRODUTO ===")
+            print(traceback.format_exc())
+
             conn.rollback()
             flash(f"Erro ao atualizar produto: {e}", "danger")
 
@@ -220,9 +258,11 @@ def configurar_rotas_produtos(app):
 
         return redirect("/produtos")
 
-    # ======================================================
+   # ======================================================
     # MOVIMENTAÇÃO DE ESTOQUE
     # ======================================================
+    from decimal import Decimal
+
     @app.route("/produtos/<int:prod_id>/estoque/mov", methods=["POST"])
     @login_required
     @require_empresa
@@ -233,14 +273,23 @@ def configurar_rotas_produtos(app):
         usuario = session.get("usuario") or session.get("usuario_id")
 
         tipo = request.form.get("tipo")
-        quantidade = parse_decimal(request.form.get("quantidade", "0"))
+
+        # 🔥 FORÇA CONVERSÃO PRA DECIMAL (RESOLVE DEFINITIVO)
+        quantidade_raw = request.form.get("quantidade")
+        quantidade = Decimal(str(parse_decimal(quantidade_raw) or 0))
+
         observacao = request.form.get("observacao", "").strip()
+
+        # 🔒 VALIDAÇÕES
+        if not empresa_id:
+            flash("Erro: empresa não selecionada.", "danger")
+            return redirect("/selecionar-empresa")
 
         if tipo not in ("ENTRADA", "SAIDA", "AJUSTE"):
             flash("Tipo de movimentação inválido.", "danger")
             return redirect("/produtos")
 
-        if quantidade <= 0:
+        if quantidade <= Decimal("0"):
             flash("Quantidade deve ser maior que zero.", "warning")
             return redirect("/produtos")
 
@@ -248,6 +297,13 @@ def configurar_rotas_produtos(app):
         cur = conn.cursor()
 
         try:
+            # 🔍 DEBUG
+            print("=== DEBUG MOVIMENTAÇÃO ===")
+            print("PROD_ID:", prod_id)
+            print("EMPRESA_ID:", empresa_id)
+            print("TIPO:", tipo)
+            print("QUANTIDADE:", quantidade, type(quantidade))
+
             cur.execute("""
                 SELECT estoque_atual
                 FROM produtos
@@ -255,28 +311,35 @@ def configurar_rotas_produtos(app):
             """, (prod_id, empresa_id))
 
             row = cur.fetchone()
+
             if not row:
                 flash("Produto não encontrado.", "danger")
                 return redirect("/produtos")
 
-            estoque_atual = row[0]
+            # ✅ SEMPRE DECIMAL
+            estoque_atual = Decimal(str(row["estoque_atual"] or 0))
 
+            # 🔄 REGRAS DE NEGÓCIO
             if tipo == "ENTRADA":
                 novo_estoque = estoque_atual + quantidade
+
             elif tipo == "SAIDA":
                 if estoque_atual < quantidade:
                     flash("Estoque insuficiente.", "danger")
                     return redirect("/produtos")
                 novo_estoque = estoque_atual - quantidade
+
             else:  # AJUSTE
                 novo_estoque = quantidade
 
+            # UPDATE ESTOQUE
             cur.execute("""
                 UPDATE produtos
                 SET estoque_atual=%s
                 WHERE id=%s AND empresa_id=%s
             """, (novo_estoque, prod_id, empresa_id))
 
+            # REGISTRO DO MOVIMENTO
             cur.execute("""
                 INSERT INTO estoque_movimentos
                 (produto_id, tipo, quantidade, observacao, usuario)
@@ -287,8 +350,12 @@ def configurar_rotas_produtos(app):
             flash("Movimentação registrada com sucesso.", "success")
 
         except Exception as e:
+            import traceback
+            print("=== ERRO MOVIMENTAÇÃO ===")
+            print(traceback.format_exc())
+
             conn.rollback()
-            flash(str(e), "danger")
+            flash(f"Erro ao movimentar estoque: {e}", "danger")
 
         finally:
             cur.close()
@@ -306,35 +373,55 @@ def configurar_rotas_produtos(app):
 
         empresa_id = session.get("empresa_id")
 
+        if not empresa_id:
+            flash("Erro: empresa não selecionada.", "danger")
+            return redirect("/selecionar-empresa")
+
         conn = conectar()
         cur = conn.cursor()
 
         try:
-            cur.execute("""
-                SELECT 1 FROM estoque_movimentos
-                WHERE produto_id=%s LIMIT 1
-            """, (prod_id,))
+            print("=== DEBUG EXCLUIR PRODUTO ===")
+            print("PROD_ID:", prod_id)
+            print("EMPRESA_ID:", empresa_id)
 
-            if cur.fetchone():
-                flash(
-                    "Exclusão bloqueada: produto possui histórico de estoque.",
-                    "warning"
-                )
-                return redirect("/produtos")
-
+            # 🔒 VERIFICA MOVIMENTAÇÃO
             cur.execute("""
-                DELETE FROM produtos
-                WHERE id=%s AND empresa_id=%s
+                SELECT 1
+                FROM estoque_movimentos em
+                JOIN produtos p ON p.id = em.produto_id
+                WHERE em.produto_id = %s
+                AND p.empresa_id = %s
+                LIMIT 1
             """, (prod_id, empresa_id))
 
-            if cur.rowcount == 0:
+            tem_movimento = cur.fetchone()
+
+            if tem_movimento:
                 conn.rollback()
-                flash("Produto não encontrado.", "danger")
+                flash(
+                    "Não é possível excluir: produto possui movimentação de estoque.",
+                    "warning"
+                )
             else:
-                conn.commit()
-                flash("Produto excluído com sucesso.", "success")
+                # 🔒 EXCLUSÃO
+                cur.execute("""
+                    DELETE FROM produtos
+                    WHERE id=%s AND empresa_id=%s
+                """, (prod_id, empresa_id))
+
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    flash("Produto não encontrado ou não pertence a esta empresa.", "danger")
+                else:
+                    conn.commit()
+                    flash("Produto excluído com sucesso.", "success")
 
         except Exception as e:
+            import traceback
+            print("=== ERRO AO EXCLUIR PRODUTO ===")
+            print(traceback.format_exc())
+
             conn.rollback()
             flash(f"Erro ao excluir produto: {e}", "danger")
 
@@ -347,6 +434,9 @@ def configurar_rotas_produtos(app):
     # ======================================================
     # HISTÓRICO DE ESTOQUE (HTML)
     # ======================================================
+    from decimal import Decimal
+    from datetime import date
+
     @app.route("/produtos/<int:prod_id>/estoque/historico")
     @login_required
     @require_empresa
@@ -359,6 +449,7 @@ def configurar_rotas_produtos(app):
         conn = conectar()
         cur = conn.cursor()
 
+        # 🔒 PRODUTO
         cur.execute("""
             SELECT id, nome, marca, modelo, unidade, estoque_atual, valor_custo
             FROM produtos
@@ -366,37 +457,45 @@ def configurar_rotas_produtos(app):
         """, (prod_id, empresa_id))
 
         produto = cur.fetchone()
+
         if not produto:
             cur.close()
             conn.close()
             flash("Produto não encontrado.", "danger")
             return redirect("/produtos")
 
-        valor_custo = produto["valor_custo"] or 0
+        valor_custo = produto["valor_custo"] or Decimal("0")
 
+        # 🔄 MOVIMENTOS
         cur.execute("""
             SELECT tipo, quantidade, observacao, usuario, data_mov
             FROM estoque_movimentos
             WHERE produto_id=%s
-              AND DATE(data_mov) BETWEEN %s AND %s
+            AND DATE(data_mov) BETWEEN %s AND %s
             ORDER BY data_mov DESC
         """, (prod_id, data_ini, data_fim))
 
         movimentos = cur.fetchall()
 
+        # 📊 RESUMO
         resumo = {
-            "entradas": 0,
-            "saidas": 0,
-            "ajustes": 0,
-            "consumo": 0.0
+            "entradas": Decimal("0"),
+            "saidas": Decimal("0"),
+            "ajustes": Decimal("0"),
+            "consumo": Decimal("0")
         }
 
-        for tipo, qtd, *_ in movimentos:
+        for mov in movimentos:
+            tipo = mov["tipo"]
+            qtd = mov["quantidade"] or Decimal("0")
+
             if tipo == "ENTRADA":
                 resumo["entradas"] += qtd
+
             elif tipo == "SAIDA":
                 resumo["saidas"] += qtd
                 resumo["consumo"] += qtd * valor_custo
+
             elif tipo == "AJUSTE":
                 resumo["ajustes"] += qtd
 
@@ -419,35 +518,50 @@ def configurar_rotas_produtos(app):
     # ======================================================
     # HISTÓRICO CSV
     # ======================================================
+    from flask import Response
+    from datetime import date
+
     @app.route("/produtos/<int:prod_id>/estoque/historico.csv")
     @login_required
     @require_empresa
     def produtos_estoque_historico_csv(prod_id):
 
         empresa_id = session.get("empresa_id")
-        data_ini = request.args.get("data_ini")
-        data_fim = request.args.get("data_fim")
+        data_ini = request.args.get("data_ini") or date.today().replace(day=1).isoformat()
+        data_fim = request.args.get("data_fim") or date.today().isoformat()
 
         conn = conectar()
         cur = conn.cursor()
 
+        # 🔒 PRODUTO
         cur.execute("""
             SELECT nome, unidade
             FROM produtos
             WHERE id=%s AND empresa_id=%s
         """, (prod_id, empresa_id))
 
-        nome, unidade = cur.fetchone()
+        produto = cur.fetchone()
 
+        if not produto:
+            cur.close()
+            conn.close()
+            flash("Produto não encontrado.", "danger")
+            return redirect("/produtos")
+
+        nome = produto["nome"]
+        unidade = produto["unidade"]
+
+        # 🔄 MOVIMENTOS
         cur.execute("""
             SELECT data_mov, tipo, quantidade, observacao, usuario
             FROM estoque_movimentos
             WHERE produto_id=%s
-              AND DATE(data_mov) BETWEEN %s AND %s
+            AND DATE(data_mov) BETWEEN %s AND %s
             ORDER BY data_mov DESC
         """, (prod_id, data_ini, data_fim))
 
         movimentos = cur.fetchall()
+
         cur.close()
         conn.close()
 
@@ -457,13 +571,23 @@ def configurar_rotas_produtos(app):
         output = StringIO()
         writer = csv.writer(output, delimiter=';')
 
+        # 🧾 CABEÇALHO
         writer.writerow([
             "Produto", "Data/Hora", "Tipo",
             "Quantidade", "Unidade", "Observação", "Usuário"
         ])
 
+        # 📄 DADOS
         for m in movimentos:
-            writer.writerow([nome, *m, unidade])
+            writer.writerow([
+                nome,
+                m["data_mov"],
+                m["tipo"],
+                m["quantidade"],
+                unidade,
+                m["observacao"],
+                m["usuario"]
+            ])
 
         return Response(
             output.getvalue(),
@@ -473,3 +597,4 @@ def configurar_rotas_produtos(app):
                 f"attachment; filename=historico_estoque_{prod_id}.csv"
             }
         )
+
