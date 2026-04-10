@@ -583,7 +583,7 @@ def configurar_rotas_locacoes(app):
         except Exception as e:
             conn.rollback()
             print("ERRO REAL AO LANÇAR CUSTO:", repr(e))  # Debug real no terminal
-            flash("Erro ao lançar custo. Verifique o terminal.", "danger")
+            flash("Erro ao lançar custo. Verifique se este produto está disponível no estoque antes de continuar.", "danger")
 
         finally:
             cur.close()
