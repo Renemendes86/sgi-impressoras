@@ -11,7 +11,7 @@ from flask import (
 )
 
 from datetime import datetime, date
-
+from sgi.core.services.historico import registrar_historico
 from sgi.core.db import conectar
 from sgi.core.permissions import (
     login_required,
@@ -368,8 +368,96 @@ def configurar_rotas_locacoes(app):
             pode_ver_valor_aluguel=pode_ver_valor_aluguel,
             pode_ver_valor_custo=pode_ver_valor_custo
         )
+    
+    # ======================================================
+    # BUSCA PRODUTOS (AUTOCOMPLETE)
+    # ======================================================
+    @app.route("/api/produtos/busca")
+    @login_required
+    @require_empresa
+    def buscar_produtos():
 
+        empresa_id = session.get("empresa_id")
+        termo = request.args.get("q", "").strip()
 
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT id, nome, marca, modelo, valor_custo
+            FROM produtos
+            WHERE empresa_id = %s
+            AND (
+                COALESCE(nome,'') ILIKE %s OR
+                COALESCE(marca,'') ILIKE %s OR
+                COALESCE(modelo,'') ILIKE %s
+            )
+            ORDER BY nome
+            LIMIT 20
+        """, (
+            empresa_id,
+            f"%{termo}%",
+            f"%{termo}%",
+            f"%{termo}%"
+        ))
+
+        resultados = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return {
+            "results": [
+                {
+                    "id": r["id"],
+                    "text": f'{r["nome"]} - {r["marca"]} {r["modelo"]}',
+                    "valor": float(r["valor_custo"] or 0)
+                }
+                for r in resultados
+            ]
+        }
+    
+    # ======================================================
+    # BUSCA SERVIÇOS (AUTOCOMPLETE)
+    # ======================================================
+    @app.route("/api/servicos/busca")
+    @login_required
+    @require_empresa
+    def buscar_servicos():
+
+        empresa_id = session.get("empresa_id")
+        termo = request.args.get("q", "").strip()
+
+        conn = conectar()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT id, nome, valor_custo
+            FROM servicos
+            WHERE empresa_id = %s
+            AND COALESCE(nome,'') ILIKE %s
+            ORDER BY nome
+            LIMIT 20
+        """, (
+            empresa_id,
+            f"%{termo}%"
+        ))
+
+        resultados = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return {
+            "results": [
+                {
+                    "id": r["id"],
+                    "text": r["nome"],
+                    "valor": float(r["valor_custo"] or 0)
+                }
+                for r in resultados
+            ]
+        }
 
 
     # ======================================================
@@ -410,6 +498,15 @@ def configurar_rotas_locacoes(app):
             flash("Não foi possível locar a impressora.", "danger")
         else:
             conn.commit()
+
+            # 🔥 REGISTRAR HISTÓRICO
+            registrar_historico(
+                impressora_id=impressora_id,
+                empresa_id=empresa_id,
+                aluguel=valor_aluguel,
+                observacoes=f"Locação criada para cliente {cliente_id}"
+            )
+
             flash("Impressora adicionada à locação.", "success")
 
         cur.close()
@@ -447,14 +544,22 @@ def configurar_rotas_locacoes(app):
             flash("Impressora não encontrada nesta locação.", "warning")
         else:
             conn.commit()
-            flash("Impressora removida da locação.", "success")
+
+        # 🔥 HISTÓRICO
+        registrar_historico(
+            impressora_id=imp_id,
+            empresa_id=empresa_id,
+            observacoes=f"Impressora removida da locação do cliente {cliente_id}"
+        )
+
+        flash("Impressora removida da locação.", "success")
 
         cur.close()
         conn.close()
 
         return redirect(f"/locacoes/{cliente_id}")
 
-        #======================================================
+    #======================================================
     # LANÇAR CUSTO NA LOCAÇÃO (COM BAIXA AUTOMÁTICA)
     # ======================================================
     @app.route("/locacoes/<int:cliente_id>/custos/novo", methods=["POST"])
@@ -578,6 +683,15 @@ def configurar_rotas_locacoes(app):
             ))
 
             conn.commit()
+
+            # 🔥 HISTÓRICO AUTOMÁTICO
+            registrar_historico(
+                impressora_id=impressora_id,
+                empresa_id=empresa_id,
+                custo_mes=quantidade * valor_unitario,
+                observacoes=f"Custo lançado ({tipo})"
+            )
+
             flash("Custo lançado com sucesso.", "success")
 
         except Exception as e:
@@ -591,7 +705,7 @@ def configurar_rotas_locacoes(app):
 
         return redirect(f"/locacoes/{cliente_id}")
     
-        # ======================================================
+    # ======================================================
     # EXCLUIR CUSTO DA LOCAÇÃO
     # ======================================================
     @app.route("/locacoes/<int:cliente_id>/custo/<int:custo_id>/excluir", methods=["POST"])
@@ -651,6 +765,14 @@ def configurar_rotas_locacoes(app):
             """, (custo_id, cliente_id))
 
             conn.commit()
+
+            # 🔥 HISTÓRICO
+            registrar_historico(
+                impressora_id=produto_id if produto_id else 0,
+                empresa_id=empresa_id,
+                observacoes=f"Exclusão de custo (ID {custo_id})"
+            )
+
             flash("Custo excluído com sucesso.", "success")
 
         except Exception as e:
@@ -663,3 +785,4 @@ def configurar_rotas_locacoes(app):
             conn.close()
 
         return redirect(f"/locacoes/{cliente_id}")
+
