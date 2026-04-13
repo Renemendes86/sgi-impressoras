@@ -134,3 +134,64 @@ background:#2a2f3a;
 color:#fff !important;
 }
 
+/* =========================================
+   CORREÇÃO GLOBAL DARK MODE (PROFISSIONAL)
+========================================= */
+
+.card,
+.card * {
+    color: #fff;
+}
+
+.form-check-label {
+    color: #fff;
+}
+
+.form-check-label small {
+    color: #adb5bd;
+}
+
+
+/* ======================================================
+   TOMSELECT PADRÃO BOOTSTRAP (SGI)
+====================================================== */
+
+.ts-control {
+    background-color: #fff !important;
+    color: #000 !important;
+    border-radius: 0.375rem !important;
+    border: 1px solid #ced4da !important;
+    min-height: 38px !important;
+    padding: 6px 12px !important;
+    font-size: 14px;
+}
+
+/* INPUT INTERNO */
+.ts-control input {
+    font-size: 14px !important;
+    color: #000 !important;
+}
+
+/* PLACEHOLDER */
+.ts-control input::placeholder {
+    color: #6c757d !important;
+}
+
+/* FOCO */
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25) !important;
+}
+
+/* DROPDOWN */
+.ts-dropdown {
+    background-color: #fff !important;
+    color: #000 !important;
+    border-radius: 0.375rem !important;
+}
+
+/* ITENS */
+.ts-dropdown .option {
+    padding: 8px !important;
+}
+
