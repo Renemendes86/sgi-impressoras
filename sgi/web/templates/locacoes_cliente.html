@@ -160,7 +160,7 @@
               {% else %}
                 --
               {% endif %}
-            </td>>
+            </td>
             <td class="text-end">
               {% if pode_ver_financeiro %}
                 R$ {{ '%.2f'|format(i.lucro_mes) }}
@@ -178,29 +178,33 @@
 
             {% if session['perfil'] in ['ADMIN','OPERADOR','SUPER_ADMIN'] %}
             <td class="text-end">
-              <button
-                class="btn btn-sm btn-outline-info btnEditLocada"
-                data-bs-toggle="modal"
-                data-bs-target="#modalEditImpressoraLocada"
-                data-id="{{ i.id }}"
-                data-local="{{ i.local_na_empresa }}"
-                data-aluguel="{{ i.valor_aluguel }}"
-              >
-                Editar
-              </button>
 
-              <form
-                method="POST"
-                action="/locacoes/{{ cliente.id }}/impressora/{{ i.id }}/remover"
-                class="d-inline form-remover-locacao"
-              >
-                <input type="hidden" name="mes" value="{{ mes }}">
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remover-locacao">
-                  Excluir da locação
-                </button>
-              </form>
-            </td>
+            
+            <button
+              class="btn btn-sm btn-outline-info btnEditLocada"
+              data-bs-toggle="modal"
+              data-bs-target="#modalEditImpressoraLocada"
+              data-id="{{ i.id }}"
+              data-local="{{ i.local_na_empresa }}"
+              data-aluguel="{{ i.valor_aluguel }}"
+            >
+              Editar
+            </button>
+
+            <form
+              method="POST"
+              action="/locacoes/{{ cliente.id }}/impressora/{{ i.id }}/remover"
+              class="d-inline form-remover-locacao"
+            >
+              <input type="hidden" name="mes" value="{{ mes }}">
+              <button type="button" class="btn btn-sm btn-outline-danger btn-remover-locacao">
+                Excluir da locação
+              </button>
+            </form>
+          </td>
             {% endif %}
+
+
           </tr>
         {% endfor %}
         </tbody>
@@ -378,24 +382,12 @@
 
             <div class="col-md-6" id="wrapProduto">
               <label class="form-label text-secondary">Produto</label>
-              <select class="form-select" name="produto_id" id="produtoSelect">
-                <option value="">Selecione...</option>
-                {% for p in produtos %}
-                  <option value="{{ p.id }}" data-valor="{{ p.valor_custo }}">
-                    {{ p.nome }} ({{ p.marca }} {{ p.modelo }})
-                  </option>
-                {% endfor %}
-              </select>
+              <select name="produto_id" id="produtoSelect" placeholder="Digite nome, marca ou modelo..."></select>
             </div>
 
             <div class="col-md-6 d-none" id="wrapServico">
               <label class="form-label text-secondary">Serviço</label>
-              <select class="form-select" name="servico_id" id="servicoSelect">
-                <option value="">Selecione...</option>
-                {% for s in servicos %}
-                  <option value="{{ s.id }}" data-valor="{{ s.valor_custo }}">{{ s.nome }}</option>
-                {% endfor %}
-              </select>
+              <select name="servico_id" id="servicoSelect" placeholder="Digite o nome do serviço..."></select>
             </div>
 
             <div class="col-md-12">
@@ -421,6 +413,8 @@
               >
               <input type="hidden" name="valor_unitario" value="0.00">
             </div>
+
+            
 
             <div class="col-md-6">
               <label class="form-label text-secondary">Data</label>
@@ -534,6 +528,9 @@
 {% endblock %}
 
 {% block scripts %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
 <script>
   // Tipo custo (produto/serviço)
   function atualizarTipoCusto(){
@@ -696,9 +693,113 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const form = document.getElementById("formAddImpressora");
+
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      console.log("🔥 FORM DE LOCAÇÃO ENVIADO");
+    });
+  }
+
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // =============================
+  // CAMPOS DE VALOR
+  // =============================
+  const hiddenValor = document.querySelector('[name="valor_unitario"]');
+  const viewValor = document.getElementById("valorUnitarioView");
+
+  function setValor(valor) {
+    const v = Number(valor || 0).toFixed(2);
+
+    if (hiddenValor) hiddenValor.value = v;
+
+    if (viewValor) {
+      viewValor.value = v;
+      viewValor.dispatchEvent(new Event('input')); // ativa máscara
+    }
+  }
+
+  // =============================
+  // AUTOCOMPLETE PRODUTO
+  // =============================
+  const produtoEl = document.getElementById("produtoSelect");
+
+  if (produtoEl) {
+    new TomSelect(produtoEl, {
+      valueField: "id",
+      labelField: "text",
+      searchField: ["text"],
+      placeholder: "Digite nome, marca ou modelo...",
+      maxOptions: 20,
+
+      load: function(query, callback) {
+        if (!query.length) return callback();
+
+        fetch(`/api/produtos/busca?q=${encodeURIComponent(query)}`)
+          .then(r => r.json())
+          .then(data => callback(data.results))
+          .catch(() => callback());
+      },
+
+      onChange: function(value) {
+        const item = this.options[value];
+        if (item) {
+          setValor(item.valor);
+        }
+      }
+    });
+  }
+
+  // =============================
+  // AUTOCOMPLETE SERVIÇO
+  // =============================
+  const servicoEl = document.getElementById("servicoSelect");
+
+  if (servicoEl) {
+    new TomSelect(servicoEl, {
+      valueField: "id",
+      labelField: "text",
+      searchField: ["text"],
+      placeholder: "Digite o nome do serviço...",
+      maxOptions: 20,
+
+      load: function(query, callback) {
+        if (!query.length) return callback();
+
+        fetch(`/api/servicos/busca?q=${encodeURIComponent(query)}`)
+          .then(r => r.json())
+          .then(data => callback(data.results))
+          .catch(() => callback());
+      },
+
+      onChange: function(value) {
+        const item = this.options[value];
+        if (item) {
+          setValor(item.valor);
+        }
+      }
+    });
+  }
+
+});
+</script>
 
 
 {% endblock %}
+
+
+  
+
+
+
 
 
   
