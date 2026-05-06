@@ -6,17 +6,6 @@
 
 <div class="container-fluid py-4 px-4">
 
-  <!-- 🔔 MENSAGENS -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show">
-          {{ message }}
-          <button class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
 
   <!-- 🔝 HEADER -->
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -40,7 +29,7 @@
 
   <div class="col-md-3">
     <label class="form-label small">Município</label>
-    <select name="municipio_id" class="form-control" required>
+    <select name="municipio_id" class="form-select" required>
       {% for m in municipios %}
         <option value="{{ m.id }}">{{ m.nome }}</option>
       {% endfor %}
@@ -78,9 +67,9 @@
   </div>
 
   <div class="col-md-2 d-flex align-items-end">
-    <button class="btn btn-primary w-100">
-      + Registrar
-    </button>
+    <button type="submit" class="btn btn-primary w-100">
+    + Registrar
+  </button>
   </div>
 
 </form>
@@ -88,47 +77,47 @@
     </div>
   </div>
 
-  <form method="GET" class="row g-2 mb-3">
+  <form method="GET" class="row g-3 mb-3 align-items-end">
 
-  <div class="col-md-4">
-  <div class="row g-2">
-
-    <!-- DATA INICIAL -->
-    <div class="col-md-3">
-    <label class="form-label small">Data Inicial</label>
-    <div class="input-group">
-        <input type="text" name="data_inicio" id="dataInicio" class="form-control">
-        <span class="input-group-text" style="cursor:pointer">
-        <i class="bi bi-calendar"></i>
-        </span>
-    </div>
-    </div>
-
-    <!-- DATA FINAL -->
-    <div class="col-md-3">
-    <label class="form-label small">Data Final</label>
-    <div class="input-group">
-        <input type="text" name="data_fim" id="dataFim" class="form-control">
-        <span class="input-group-text" style="cursor:pointer">
-        <i class="bi bi-calendar"></i>
-        </span>
-    </div>
-    </div>
-
+  <!-- DATA INICIAL -->
+<div class="col-md-2">
+  <label class="form-label small">Data Inicial</label>
+  <div class="input-group data-group">
+    <input type="text" name="data_inicio" id="dataInicio"
+           value="{{ data_inicio or '' }}"
+           class="form-control campo-data">
+    <span class="input-group-text icone-data">
+      <i class="bi bi-calendar"></i>
+    </span>
   </div>
 </div>
 
-  <div class="col-md-2">
+<!-- DATA FINAL -->
+<div class="col-md-2">
+  <label class="form-label small">Data Final</label>
+  <div class="input-group data-group">
+    <input type="text" name="data_fim" id="dataFim"
+           value="{{ data_fim or '' }}"
+           class="form-control campo-data">
+    <span class="input-group-text icone-data">
+      <i class="bi bi-calendar"></i>
+    </span>
+  </div>
+</div>
+
+  <!-- FILTRO -->
+  <div class="col-md-3">
     <label class="form-label small">Filtro rápido</label>
-    <select name="filtro" class="form-control">
-      <option value="">Todos</option>
-      <option value="mes_atual">Mês Atual</option>
-      <option value="mes_anterior">Mês Anterior</option>
-      <option value="ano">Ano Atual</option>
+    <select name="filtro" class="form-select">
+      <option value="" {{ 'selected' if not filtro }}>Todos</option>
+      <option value="mes_atual" {{ 'selected' if filtro == 'mes_atual' }}>Mês Atual</option>
+      <option value="mes_anterior" {{ 'selected' if filtro == 'mes_anterior' }}>Mês Anterior</option>
+      <option value="ano" {{ 'selected' if filtro == 'ano' }}>Ano Atual</option>
     </select>
   </div>
 
-  <div class="col-md-2 d-flex align-items-end">
+  <!-- BOTÃO -->
+  <div class="col-md-2">
     <button class="btn btn-outline-light w-100">
       Filtrar
     </button>
@@ -240,6 +229,9 @@ new DataTable('#tabelaViagens', {
 <script>
 document.addEventListener("DOMContentLoaded", function(){
 
+  // =========================================
+  // 📅 FLATPICKR
+  // =========================================
   const inicio = flatpickr("#dataInicio", {
     locale: "pt",
     dateFormat: "Y-m-d",
@@ -254,42 +246,259 @@ document.addEventListener("DOMContentLoaded", function(){
     altFormat: "d/m/Y"
   });
 
-  // 🔥 clique no ícone abre o calendário (CORRIGIDO)
-document.querySelectorAll(".input-group-text").forEach(btn => {
-  btn.addEventListener("click", function(){
+  // =========================================
+  // 🔥 ABRIR CALENDÁRIO PELO ÍCONE
+  // =========================================
+  document.querySelectorAll(".input-group-text").forEach(btn => {
+    btn.addEventListener("click", function(){
 
-    const input = this.parentElement.querySelector("input");
+      const input = this.parentElement.querySelector("input");
 
-    if(input.id === "dataInicio"){
-      inicio.open();
-    }
+      if(input.id === "dataInicio"){
+        inicio.open();
+      }
 
-    if(input.id === "dataFim"){
-      fim.open();
-    }
+      if(input.id === "dataFim"){
+        fim.open();
+      }
+
+    });
+  });
+
+  // =========================================
+  // 🚀 FILTRO RÁPIDO → ATUALIZA DATAS
+  // =========================================
+  const filtro = document.querySelector('[name="filtro"]');
+  const inputInicio = document.querySelector('#dataInicio');
+  const inputFim = document.querySelector('#dataFim');
+
+ function atualizarDatas(){
+
+  const hoje = new Date();
+  let dataInicio = null;
+  let dataFim = null;
+
+  if(!filtro.value){
+    dataInicio = new Date(hoje.getFullYear(), 0, 1);
+    dataFim = hoje;
+  }
+
+  if(filtro.value === "mes_atual"){
+    dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    dataFim = hoje;
+  }
+
+  if(filtro.value === "mes_anterior"){
+    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const ultimoMes = new Date(primeiroDiaMes - 1);
+
+    dataInicio = new Date(ultimoMes.getFullYear(), ultimoMes.getMonth(), 1);
+    dataFim = new Date(ultimoMes.getFullYear(), ultimoMes.getMonth() + 1, 0);
+  }
+
+  if(filtro.value === "ano"){
+    dataInicio = new Date(hoje.getFullYear(), 0, 1);
+    dataFim = hoje;
+  }
+
+  if(dataInicio){
+    inicio.setDate(dataInicio);
+  }
+
+  if(dataFim){
+    fim.setDate(dataFim);
+  }
+}
+
+  // Evento ao mudar filtro
+  filtro.addEventListener("change", atualizarDatas);
+
+  // Executa ao carregar
+  atualizarDatas();
+
+  // =========================================
+  // 🔥 BLOQUEAR SCRIPT GLOBAL (SÓ VIAGENS)
+  // =========================================
+  document.querySelectorAll('input[data-money="1"]').forEach(input => {
+
+    const clone = input.cloneNode(true);
+
+    input.parentNode.replaceChild(clone, input);
 
   });
-});
 
-});
+  // =========================================
+  // 💰 MÁSCARA REAL BR (FOCUS + BLUR)
+  // =========================================
+  function formatarRealBR(valor) {
+
+    if (!valor) return 'R$ 0,00';
+
+    valor = valor.replace(/[^\d,]/g, '');
+
+    let partes = valor.split(',');
+
+    let inteiro = partes[0] || '0';
+    let decimal = partes[1] || '';
+
+    inteiro = parseInt(inteiro || '0').toLocaleString('pt-BR');
+
+    if (decimal.length === 0) {
+      decimal = '00';
+    } else if (decimal.length === 1) {
+      decimal = decimal + '0';
+    } else {
+      decimal = decimal.substring(0, 2);
+    }
+
+    return `R$ ${inteiro},${decimal}`;
+  }
+
+
+  // aplica nos campos
+  document.querySelectorAll('input[data-money="1"]').forEach(input => {
+
+    // valor inicial
+    if (!input.value) {
+      input.value = 'R$ 0,00';
+    }
+
+    // 🔥 AO CLICAR → LIMPA CAMPO
+    input.addEventListener('focus', function () {
+
+      if (input.value === 'R$ 0,00') {
+        input.value = '';
+      } else {
+        // remove R$ e formatação para edição
+        input.value = input.value
+          .replace('R$', '')
+          .replace(/\./g, '')
+          .replace(',', '.')
+          .trim();
+      }
+
+    });
+
+    // 🔥 AO SAIR → FORMATA
+    input.addEventListener('blur', function () {
+
+      input.value = formatarRealBR(input.value);
+
+    });
+
+  });
+
+  // =========================================
+  // 🚫 BLOQUEAR LETRAS NOS CAMPOS DE VALOR
+  // =========================================
+  document.querySelectorAll('input[data-money="1"]').forEach(input => {
+
+    input.addEventListener('keypress', function (e) {
+
+      const char = String.fromCharCode(e.which);
+
+      // permite números
+      if (/[0-9]/.test(char)) return;
+
+      // permite vírgula
+      if (char === ',') return;
+
+      // bloqueia o resto
+      e.preventDefault();
+
+    });
+
+  });
+
+  });
+
 </script>
 {% endblock %}
 
 <style>
-.input-group-text {
+/* =========================================
+   🎯 SELECT (OK - manter)
+   ========================================= */
+
+.form-select {
+  background-color: #1f2a37 !important;
+  color: #ffffff !important;
+  border: 1px solid #3a3f45;
+}
+
+.form-select option {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.form-select option:hover {
+  background-color: #0d6efd;
+  color: #ffffff;
+}
+
+/* =========================================
+   📅 DATA PROFISSIONAL COM ÍCONE
+   ========================================= */
+
+.data-group {
+  display: flex;
+  align-items: center;
+}
+
+/* Campo base */
+.campo-data,
+.flatpickr-alt-input {
+  background-color: #1f2a37 !important;
+  color: #ffffff !important;
+  border: 1px solid #3a3f45 !important;
+  border-right: none !important;
+
+  height: 38px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* 🔥 REMOVE largura fixa problemática */
+.flatpickr-alt-input {
+  width: 100% !important;
+  min-width: unset !important;
+  max-width: unset !important;
+}
+
+/* Ícone */
+.data-group .input-group-text {
+  background-color: #1f2a37 !important;
+  color: #ffffff !important;
+  border: 1px solid #3a3f45 !important;
+
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   cursor: pointer;
 }
 
-.datepicker {
-  background-color: #111;
-  color: #fff;
-  border: 1px solid #444;
+/* Hover elegante */
+.data-group .input-group-text:hover {
+  background-color: #0d6efd !important;
 }
 
-.datepicker:focus {
-  border-color: #0d6efd;
-  box-shadow: none;
+/* =========================================
+   🎨 CALENDÁRIO DARK
+   ========================================= */
+
+.flatpickr-calendar {
+  background: #111 !important;
+  border: 1px solid #444 !important;
+}
+
+.flatpickr-day {
+  color: #fff;
+}
+
+.flatpickr-day.selected {
+  background: #0d6efd !important;
 }
 </style>
-
 {% endblock %}
