@@ -133,7 +133,10 @@ def configurar_rotas_viagens(app):
         return render_template(
             "viagens.html",
             viagens=viagens,
-            municipios=municipios
+            municipios=municipios,
+            filtro=filtro,
+            data_inicio=data_inicio,
+            data_fim=data_fim
         )
 
 
@@ -226,6 +229,80 @@ def configurar_rotas_viagens(app):
         flash("Viagem cadastrada com sucesso.", "success")
 
         return redirect("/viagens")
+    
+    # ======================================================
+    # EDITAR VIAGEM
+    # ======================================================
+    @app.route("/viagens/<int:id>/editar", methods=["GET", "POST"])
+    @login_required
+    @require_empresa
+    @perfil_required("ADMIN", "SUPER_ADMIN")
+    def viagens_editar(id):
+
+        conn = conectar()
+        cur = conn.cursor()
+
+        if request.method == "POST":
+
+            veiculo = request.form.get("veiculo")
+
+            km_saida = float(request.form.get("km_saida") or 0)
+            km_chegada = float(request.form.get("km_chegada") or 0)
+            km_rodado = km_chegada - km_saida
+
+            def parse_decimal(valor, default=0.0):
+                try:
+                    if not valor:
+                        return float(default)
+
+                    v = str(valor).replace("R$", "").strip()
+
+                    if "," in v:
+                        v = v.replace(".", "").replace(",", ".")
+
+                    return float(v)
+                except:
+                    return float(default)
+
+            combustivel = parse_decimal(request.form.get("combustivel"))
+            refeicao = parse_decimal(request.form.get("refeicao"))
+            hotel = parse_decimal(request.form.get("hotel"))
+
+            custo_total = combustivel + refeicao + hotel
+
+            cur.execute("""
+                UPDATE viagens
+                SET veiculo=%s,
+                    km_saida=%s,
+                    km_chegada=%s,
+                    km_rodado=%s,
+                    gasto_combustivel=%s,
+                    gasto_refeicao=%s,
+                    gasto_hotel=%s,
+                    custo_total=%s
+                WHERE id=%s
+            """, (
+                veiculo,
+                km_saida,
+                km_chegada,
+                km_rodado,
+                combustivel,
+                refeicao,
+                hotel,
+                custo_total,
+                id
+            ))
+
+            conn.commit()
+            flash("Viagem atualizada com sucesso.", "success")
+            return redirect("/viagens")
+
+        cur.execute("SELECT * FROM viagens WHERE id=%s", (id,))
+        viagem = cur.fetchone()
+
+        conn.close()
+
+        return render_template("viagens_editar.html", viagem=viagem)
 
 
     # ======================================================
@@ -242,17 +319,28 @@ def configurar_rotas_viagens(app):
         conn = conectar()
         cur = conn.cursor()
 
-        cur.execute("""
-            DELETE FROM viagens
-            WHERE id = %s
-            AND empresa_id = %s
-        """, (id, empresa_id))
+        try:
+            cur.execute("""
+                DELETE FROM viagens
+                WHERE id = %s
+                AND empresa_id = %s
+            """, (id, empresa_id))
 
-        conn.commit()
+            if cur.rowcount == 0:
+                conn.rollback()
+                flash("Viagem não encontrada.", "danger")
+            else:
+                conn.commit()
+                flash("Viagem excluída com sucesso.", "success")
 
-        cur.close()
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            flash(f"Erro ao excluir viagem: {str(e)}", "danger")
 
-        flash("Viagem excluída com sucesso.", "success")
+        finally:
+            cur.close()
+            conn.close()
 
         return redirect("/viagens")
+    
+   
