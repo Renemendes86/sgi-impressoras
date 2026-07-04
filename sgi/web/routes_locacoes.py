@@ -785,3 +785,4 @@ def configurar_rotas_locacoes(app):
 
         return redirect(f"/locacoes/{cliente_id}")
 
+
