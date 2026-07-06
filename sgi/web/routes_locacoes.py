@@ -11,6 +11,7 @@ from flask import (
 )
 
 from datetime import datetime, date
+from sgi.core.services.historico import registrar_historico
 from sgi.core.db import conectar
 from sgi.core.permissions import (
     login_required,
@@ -784,5 +785,3 @@ def configurar_rotas_locacoes(app):
             conn.close()
 
         return redirect(f"/locacoes/{cliente_id}")
-
-
