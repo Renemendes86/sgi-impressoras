@@ -611,12 +611,12 @@ def configurar_rotas_locacoes(app):
         conn = conectar()
         cur = conn.cursor()
 
+        # =============================
+        # BAIXA ESTOQUE SE FOR PRODUTO
+        # =============================
+       
         try:
-            # =============================
-            # BAIXA ESTOQUE SE FOR PRODUTO
-            # =============================
             if tipo == "PRODUTO":
-
                 cur.execute("""
                     SELECT estoque_atual
                     FROM produtos
@@ -642,7 +642,6 @@ def configurar_rotas_locacoes(app):
                     WHERE id = %s AND empresa_id = %s
                 """, (novo_estoque, produto_id, empresa_id))
 
-                # Registrar histórico de consumo
                 cur.execute("""
                     INSERT INTO estoque_movimentos
                         (produto_id, tipo, quantidade, observacao, usuario)
@@ -654,20 +653,14 @@ def configurar_rotas_locacoes(app):
                     usuario
                 ))
 
+
             # =============================
             # INSERIR CUSTO
             # =============================
             cur.execute("""
                 INSERT INTO custos_impressora
-                    (cliente_id,
-                    impressora_id,
-                    tipo,
-                    produto_id,
-                    servico_id,
-                    descricao,
-                    quantidade,
-                    valor_unitario,
-                    data_custo)
+                    (cliente_id, impressora_id, tipo, produto_id, servico_id,
+                    descricao, quantidade, valor_unitario, data_custo)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, (
                 cliente_id,
@@ -681,9 +674,7 @@ def configurar_rotas_locacoes(app):
                 data_custo
             ))
 
-            conn.commit()
-
-            # 🔥 HISTÓRICO AUTOMÁTICO
+            # registrar histórico ANTES do commit
             registrar_historico(
                 impressora_id=impressora_id,
                 empresa_id=empresa_id,
@@ -691,12 +682,15 @@ def configurar_rotas_locacoes(app):
                 observacoes=f"Custo lançado ({tipo})"
             )
 
+            conn.commit()
             flash("Custo lançado com sucesso.", "success")
 
         except Exception as e:
             conn.rollback()
-            print("ERRO REAL AO LANÇAR CUSTO:", repr(e))  # Debug real no terminal
-            flash("Erro ao lançar custo. Verifique se este produto está disponível no estoque antes de continuar.", "danger")
+            import traceback
+            print("ERRO REAL AO LANÇAR CUSTO:")
+            traceback.print_exc()
+            flash(f"Erro ao lançar custo: {e}", "danger")
 
         finally:
             cur.close()
