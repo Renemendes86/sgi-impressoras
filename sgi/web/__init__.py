@@ -14,7 +14,7 @@ from sgi.web.routes_municipios import configurar_rotas_municipios
 from sgi.web.routes_usuarios import configurar_rotas_usuarios
 from sgi.web.routes_empresas import configurar_rotas_empresas
 from sgi.web.routes_viagens import configurar_rotas_viagens
-
+from sgi.web.routes_historico import configurar_rotas_historico
 
 def registrar_rotas(app):
     """
@@ -35,6 +35,7 @@ def registrar_rotas(app):
     configurar_rotas_contratos_publicos(app)
     configurar_rotas_municipios(app)
     configurar_rotas_viagens(app)
+    configurar_rotas_historico(app)
 
     # Administração
     configurar_rotas_usuarios(app)
